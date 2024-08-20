@@ -1,0 +1,14 @@
+{
+  "preamble": {
+    "title": "anastasialabs/upgradable-multisig",
+    "description": "Aiken contracts for project 'anastasialabs/upgradable-multisig'",
+    "version": "0.0.0",
+    "plutusVersion": "v2",
+    "compiler": {
+      "name": "Aiken",
+      "version": "v1.0.29-alpha+16fb02e"
+    },
+    "license": "Apache-2.0"
+  },
+  "validators": []
+}

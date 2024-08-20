@@ -175,9 +175,11 @@ The Multi-sig Contract is the primary contract responsible for managing the list
 
 - *`threshold`:* Minimum number of required signatures.
 
-- *`funds`: * AssetClass of the funds to be withdrawn.
+- *`funds`:* AssetClass of the funds to be withdrawn.
 
-- *`funds_qty`: * Max Amount of funds to be withdrawn per transaction.
+- *`funds_qty`:* The total amount of funds controlled by the contract
+
+- *`spending_limit`:* Max Amount of funds to be withdrawn per transaction.
 
 \
 ==== Redeemer
@@ -198,6 +200,9 @@ The Multi-sig Contract is the primary contract responsible for managing the list
   
   The redeemer allows a majority of the authorized signers to collectively approve and execute transactions using the funds controlled by the multi-signature contract
   
+  - Ensure the spent amount is within the spending_limit
+  
+  - Verify that the exact amount specified in the redeemer is being spent
 
   - Ensure the output datum matches the input datum (no changes to the multisig configuration)
 
@@ -211,7 +216,13 @@ The Multi-sig Contract is the primary contract responsible for managing the list
 
     - 0 < New threshold ≤ New signer count // (We can't require more signatures than there are signers.)
 
+    - New funds_qty ≥ 0
+
+    - 0 ≤ New spending_limit ≤ New funds_qty
+
   - Ensure there are no duplicate keys in the new list of signers
+
+  - Verify that input value equals output value (no spending during update)
 
   - Ensure the new configuration is stored in the output datum
 
