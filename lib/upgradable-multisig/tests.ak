@@ -34,13 +34,17 @@ pub fn test_224_05() {
   bytearray.take(blake2b_256(#"05"), 28)
 }
 
-// Generate a bytearray with blake2b_256
-pub fn test_policy() {
+pub fn test_224_06() {
   bytearray.take(blake2b_256(#"06"), 28)
 }
 
-pub fn test_withdraw_pkh() {
+// Generate a bytearray with blake2b_256
+pub fn test_policy() {
   bytearray.take(blake2b_256(#"07"), 28)
+}
+
+pub fn test_withdraw_pkh() {
+  bytearray.take(blake2b_256(#"08"), 28)
 }
 
 pub fn test_input_utxo_01() {

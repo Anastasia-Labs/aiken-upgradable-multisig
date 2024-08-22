@@ -14,36 +14,44 @@ use upgradable_multisig/types.{
   AssetClass, MultisigDatum, MultisigRedeemer, Sign, Update,
 }
 
-// Sum up all the values from the outputs into a single Value.
-// Compare this total output value with the input value to ensure no assets are lost.
+// Ensure that no assets are lost in the transaction
 fn value_preserved(input_value: Value, outputs: List<Output>) -> Bool {
+  trace @"Input value:"
+  trace cbor.diagnostic(input_value)
+  trace @"Outputs:"
+  trace cbor.diagnostic(outputs)
+
+  // Sum up all the values from the outputs into a single Value
   let total_output_value =
     outputs
       |> list.foldl(
           value.zero(),
           fn(output, acc) { value.merge(acc, output.value) },
         )
-  value.flatten(input_value)
+  trace @"Total output value:"
+  trace cbor.diagnostic(total_output_value)
+
+  let flattened_input = value.flatten(input_value)
+  trace @"Flattened input value:"
+  trace cbor.diagnostic(flattened_input)
+
+  // Compare each asset in the input to ensure it's preserved in the output
+  flattened_input
     |> list.all(
         fn(asset) {
           let (policy_id, asset_name, qty) = asset
-          value.quantity_of(total_output_value, policy_id, asset_name) >= qty
+          let output_qty =
+            value.quantity_of(total_output_value, policy_id, asset_name)
+          trace @"Checking asset:"
+          trace cbor.diagnostic((policy_id, asset_name, qty))
+          trace @"Output quantity:"
+          trace cbor.diagnostic(output_qty)
+          output_qty >= qty
         },
       )
 }
 
-fn amount_spent_correctly(
-  input_value: Value,
-  output_value: Value,
-  funds: AssetClass,
-  amount: Int,
-) -> Bool {
-  let AssetClass { policy_id, asset_name } = funds
-  let input_qty = value.quantity_of(input_value, policy_id, asset_name)
-  let output_qty = value.quantity_of(output_value, policy_id, asset_name)
-  input_qty - output_qty == amount
-}
-
+// Main validator function for the upgradable multisig contract
 validator {
   fn multisig_validator(
     datum: MultisigDatum,
@@ -57,23 +65,15 @@ validator {
     let Transaction { inputs, outputs, extra_signatories, .. } = tx
 
     expect Some(own_input) = transaction.find_input(inputs, output_reference)
-    expect [own_output, recipient_output, ..] = outputs
 
-    trace @"own_output"
-    trace cbor.diagnostic(own_output)
-    trace @"recipient_output"
-    trace cbor.diagnostic(recipient_output)
-
-    // let signed_by_majority =
-    //   list.length(
-    //     list.filter(extra_signatories, fn(sig) { list.has(datum.signers, sig) }),
-    //   ) >= datum.threshold
+    // Count the number of valid signers for this transaction
     let matching_signers =
       list.filter(extra_signatories, fn(sig) { list.has(datum.signers, sig) })
 
     trace @"matching_signers"
     trace cbor.diagnostic(matching_signers)
 
+    // Check if the number of valid signers meets or exceeds the threshold
     let signed_by_majority = list.length(matching_signers) >= datum.threshold
 
     trace @"signed_by_majority"
@@ -81,23 +81,18 @@ validator {
     trace @"datum.threshold"
     trace cbor.diagnostic(datum.threshold)
 
-    // Common checks
+    // Perform common checks for both Sign and Update operations
     let common_checks =
-      signed_by_majority && value_preserved(own_input.output.value, outputs)
+      signed_by_majority? && value_preserved(own_input.output.value, outputs)?
 
     when redeemer is {
-      Sign ->
-        common_checks && validate_sign(
-          datum,
-          own_input,
-          own_output,
-          recipient_output,
-        )
-      Update -> common_checks && validate_update(own_input, own_output)
+      Sign -> common_checks && validate_sign(datum, own_input, outputs)
+      Update -> common_checks && validate_update(datum, own_input, outputs)
     }
   }
 }
 
+// Helper function to get the amount of a specific asset from a Value
 fn get_asset_amount(value: Value, asset: AssetClass) -> Int {
   value.quantity_of(value, asset.policy_id, asset.asset_name)
 }
@@ -105,9 +100,15 @@ fn get_asset_amount(value: Value, asset: AssetClass) -> Int {
 fn validate_sign(
   datum: MultisigDatum,
   own_input: Input,
-  own_output: Output,
-  recipient_output: Output,
+  outputs: List<Output>,
 ) -> Bool {
+  expect [own_output, recipient_output, ..] = outputs
+
+  trace @"own_output"
+  trace cbor.diagnostic(own_output)
+  trace @"recipient_output"
+  trace cbor.diagnostic(recipient_output)
+
   let input_amount = get_asset_amount(own_input.output.value, datum.funds)
   let recipient_amount = get_asset_amount(recipient_output.value, datum.funds)
   let output_amount = get_asset_amount(own_output.value, datum.funds)
@@ -120,12 +121,10 @@ fn validate_sign(
   trace @"output_amount"
   trace cbor.diagnostic(output_amount)
 
-  // Calculate the transfer amount
-  if transfer_amount > datum.spending_limit {
-    trace @"Transfer amount exceeds spending limit"
-    False
-  } else if recipient_amount != transfer_amount {
-    trace @"Incorrect amount transferred to recipient"
+  // Check if the transfer adheres to the spending rules
+  if
+  (input_amount != datum.funds_qty)? || (transfer_amount > datum.spending_limit)? || (recipient_amount != transfer_amount)?{
+  
     False
   } else {
     // Validate that the datum is updated correctly
@@ -134,6 +133,7 @@ fn validate_sign(
   }
 }
 
+// Check if the output datum is valid 
 fn is_datum_valid(
   datum_in: MultisigDatum,
   datum_out: MultisigDatum,
@@ -157,36 +157,50 @@ fn values_equal(a: Value, b: Value) -> Bool {
   value.is_zero(value.merge(a, value.negate(b)))
 }
 
-fn validate_update(own_input: Input, own_output: Output) -> Bool {
+fn validate_update(
+  input_datum: MultisigDatum,
+  own_input: Input,
+  outputs: List<Output>,
+) -> Bool {
+  expect [own_output, ..] = outputs
+
   // Validate that the output datum is updated correctly
   expect output_datum: MultisigDatum = data.output_datum(own_output)
-  let new_datum: MultisigDatum = output_datum
   // Ensure the new signers list is not empty
-  let new_signer_count = list.length(new_datum.signers)
-  if new_signer_count == 0 {
-    trace @"New signers list is empty"
-    False
-  } else if new_datum.threshold <= 0 || new_datum.threshold > new_signer_count {
-    trace @"Invalid new threshold"
-    False
-  } else if list.length(list.unique(new_datum.signers)) != new_signer_count {
-    trace @"Duplicate signers in new list"
-    False
-  } else if new_datum.funds_qty < 0 {
-    trace @"Invalid new funds quantity"
-    False
-  } else if new_datum.spending_limit <= 0 || new_datum.spending_limit > new_datum.funds_qty {
-    trace @"Invalid new spending limit"
-    False
-  } else if new_datum.funds_qty != get_asset_amount(
+  let new_signer_count = list.length(output_datum.signers)
+  let old_signer_count = list.length(input_datum.signers)
+  let signer_count_diff = new_signer_count - old_signer_count
+
+  // Perform various checks on the new datum
+  if
+  (new_signer_count == 0)? || (output_datum.threshold <= 0)? || (output_datum.threshold > new_signer_count)? || (list.length(
+    list.unique(output_datum.signers),
+  ) != new_signer_count)? || (output_datum.funds_qty < 0)? || (output_datum.spending_limit <= 0)? || (output_datum.spending_limit > output_datum.funds_qty)? || (output_datum.funds_qty != get_asset_amount(
     own_output.value,
-    new_datum.funds,
-  ) {
-    trace @"Funds quantity in datum doesn't match actual value"
+    output_datum.funds,
+  ))?{
+  
     False
+  } else if signer_count_diff != 0 {
+    // Handle signer addition or removal
+    if signer_count_diff > 1 || signer_count_diff < -1 {
+      False
+    } else {
+      // Ensure new threshold is appropriate and value is preserved
+      //This ensures that the threshold is always at least a majority of the signers, 
+      //preventing a situation where a minority could control the multisig.
+      (output_datum.threshold >= new_signer_count / 2 + 1)? && values_equal(
+        own_output.value,
+        own_input.output.value,
+      )
+    }
   } else {
-    // Ensure the total value remains unchanged during updates
-    values_equal(own_output.value, own_input.output.value)
+    // If signer count hasn't changed, ensure signers list is unchanged
+    // This prevents swapping out a signer without changing the count
+    (output_datum.signers == input_datum.signers)? && values_equal(
+      own_output.value,
+      own_input.output.value,
+    )
   }
 }
 
@@ -280,4 +294,83 @@ test success_sign() {
 
   // Call the validator function
   multisig_validator(datum, redeemer, context)
+}
+
+test success_update() {
+  // Set up test data
+  let own_policy = tests.test_policy()
+  let tx_hash = tests.test_224_01()
+  let init_output_ref = tests.test_input_utxo_02(tx_hash)
+
+  let redeemer = Update
+
+  // Create input and output UTxOs
+  let input_value = 100_000_000_000
+
+  // 100,000 ADA
+  let pubkey_hash_01 = tests.test_224_02()
+  let pubkey_hash_02 = tests.test_224_03()
+  let pubkey_hash_03 = tests.test_224_04()
+  let pubkey_hash_04 = tests.test_224_05()
+  let pubkey_hash_05 = tests.test_224_06()
+
+  // New signer
+  let old_signatories =
+    [pubkey_hash_01, pubkey_hash_02, pubkey_hash_03, pubkey_hash_04]
+  let new_signatories =
+    [pubkey_hash_01, pubkey_hash_02, pubkey_hash_03, pubkey_hash_05]
+
+  // Updated list
+  let old_threshold = list.length(old_signatories) / 2 + 1
+  let new_threshold = list.length(new_signatories) / 2 + 1
+
+  let old_spending_limit = 1_000_000_000
+  // 1,000 ADA
+  let new_spending_limit = 2_000_000_000
+
+  // 2,000 ADA
+  let old_datum =
+    tests.test_multisig_datum(old_threshold, input_value, old_spending_limit)
+  let new_datum =
+    tests.test_multisig_datum(new_threshold, input_value, new_spending_limit)
+
+  let own_input =
+    tests.test_context_input_01(
+      init_output_ref,
+      own_policy,
+      value.from_lovelace(input_value),
+      old_datum,
+    )
+
+  let own_output =
+    tests.test_utxo_02(
+      own_policy,
+      value.from_lovelace(input_value),
+      // Same value as input
+      new_datum,
+    )
+
+  // Create the transaction context
+  let context =
+    ScriptContext {
+      purpose: Spend(own_input.output_reference),
+      transaction: Transaction {
+        inputs: [own_input],
+        reference_inputs: [],
+        outputs: [own_output],
+        fee: value.zero(),
+        mint: value.to_minted_value(value.zero()),
+        certificates: [],
+        withdrawals: [],
+        validity_range: interval.everything(),
+        extra_signatories: old_signatories,
+        // Use old signatories for authorization
+        redeemers: [],
+        datums: dict.new(),
+        id: TransactionId { hash: tx_hash },
+      },
+    }
+
+  // Call the validator function
+  multisig_validator(old_datum, redeemer, context)
 }
