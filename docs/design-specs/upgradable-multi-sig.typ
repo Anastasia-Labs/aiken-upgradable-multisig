@@ -202,8 +202,6 @@ The Multi-sig Contract is the primary contract responsible for managing the list
   
   - Ensure the spent amount is within the spending_limit
   
-  - Verify that the exact amount specified in the redeemer is being spent
-
   - Ensure the output datum matches the input datum (no changes to the multisig configuration)
 
 + *Update* 
@@ -242,13 +240,6 @@ This action ensures that the number of signers meets or exceeds the specified th
 #transaction(
   "Sign",
   inputs: (
-    // (
-    //   name: "User UTxO",
-    //   address: "signer_addr",
-    //   value: (
-    //     ada: 100,
-    //   ),
-    // ),
     (
       name: "Mulitsig UTxO",
       address: "multisig_contract",
@@ -265,10 +256,9 @@ This action ensures that the number of signers meets or exceeds the specified th
   ),
   outputs: (
     (
-      name: "User UTxO",
-      address: "signer_addr",
+      name: "Withdrawal UTxO",
       value: (
-        ada: 1100,
+        ada: 1000,
       )
     ),
     (
@@ -352,13 +342,6 @@ updates the required signers threshold.
   #transaction(
   "Sign",
   inputs: (
-    // (
-    //   name: "User UTxO",
-    //   address: "signer_addr",
-    //   value: (
-    //     ada: 100,
-    //   ),
-    // ),
     (
       name: "Mulitsig UTxO",
       address: "multisig_contract",
@@ -374,18 +357,12 @@ updates the required signers threshold.
     ),
   ),
   outputs: (
-    (
-      name: "User UTxO",
-      address: "signer_addr",
-      value: (
-        ada: 1100,
-      )
-    ),
+   
     (
       name: "Mulitsig Output",
       address: "multisig_contract",
       value: (
-        ada: 99000,
+        ada: 100000,
        
       ),
       datum: (
@@ -402,9 +379,6 @@ updates the required signers threshold.
     "Signer B",
     "Signer C",
   ),
-  // certificates: (
-  //   "Withdraw Stake A",
-  // ),
   show_mints: false,
   notes: [Update UTxO Diagram]
 )
