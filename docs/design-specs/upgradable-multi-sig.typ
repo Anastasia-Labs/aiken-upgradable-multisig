@@ -108,7 +108,7 @@
 = Overview
 \
 
-This Upgradable Multi-Signature Smart Contract is developed using Aiken for the Cardano blockchain. It is designed to facilitate secure asset transactions by authorized members within predefined thresholds. The contract allows for seamless adjustment of signer thresholds and dynamic addition or removal of signers, ensuring long-term usability and adaptability.
+This document outlines the design specification for an upgradable multisignature (multisig) smart contract implemented using Aiken for the Cardano blockchain. The contract enables authorized members to execute asset transactions within predefined thresholds, demonstrates secure spending of assets, allows seamless adjustment of signer thresholds, and supports dynamic addition or removal of signers for enduring usability and adaptability.
 
 #pagebreak()
 
@@ -161,15 +161,19 @@ There are one main contracts in this multi-sig system.
 \
 === Multi-sig validator
 \
-The Multi-sig Contract is the primary contract responsible for managing the list of authorized signers, validating transactions, and ensuring the proper execution of multi-sig operations. It facilitates the initialization of the multi-sig wallet, updating of signers, execution of transactions, and upgrading of the contract.
+The Multi-sig Contract is the primary contract responsible for managing the list of authorized signers, validating transactions, and ensuring the proper execution of multi-sig operations.
 
 ==== Parameters
 \
 - None
 \
 ==== Spend Purpose
+\
+The contract uses the Spend purpose, allowing it to manage and spend funds locked in its address.
 
 ==== Datum
+\
+The datum structure holds the current state of the multisig arrangement:
 \
 - *`signers`:* List of public key hashes of authorized signers.
 
@@ -184,23 +188,23 @@ The Multi-sig Contract is the primary contract responsible for managing the list
 \
 ==== Redeemer
 \
-- Sign
+The contract supports two types of operations, represented by the redeemer:
+\
+- Sign: For executing fund transfers
 
-- Update
+- Update: For modifying the multisig configuration
 \
 ==== Validation
 \
-+ *Common Checks (for both Sign and Update)*
-
-  - Ensure the transaction is signed by at least the required number of authorized signers
-
-  - Verify that the output value contains at least the input value (no unauthorized spending)
-
 + *Sign* 
   
   The redeemer allows a majority of the authorized signers to collectively approve and execute transactions using the funds controlled by the multi-signature contract
   
-  - Ensure the spent amount is within the spending_limit
+  - Verifies that the required number of authorized signers have signed the transaction
+
+  - Ensures the transfer amount does not exceed the spending limit
+
+  - Checks that the total value is preserved across inputs and outputs
   
   - Ensure the output datum matches the input datum (no changes to the multisig configuration)
 
@@ -208,21 +212,27 @@ The Multi-sig Contract is the primary contract responsible for managing the list
 
   The redeemer enables the modification of the multi-signature arrangement itself.
  
+  - Verifies that the required number of authorized signers have signed the transaction 
+
   - Enforce bounds on new signers list and threshold:
 
-    - New signer count > 0
+    - New signer count must be greater than 0
 
-    - 0 < New threshold ≤ New signer count // (We can't require more signatures than there are signers.)
+    - New threshold must be greater than 0 and less than or equal to the new signer count
 
-    - New funds_qty ≥ 0
+    - New funds quantity must be greater than or equal to 0
 
-    - 0 ≤ New spending_limit ≤ New funds_qty
+    - New spending limit must be greater than or equal to 0 and less than or equal to the new funds quantity
 
   - Ensure there are no duplicate keys in the new list of signers
 
   - Verify that input value equals output value (no spending during update)
 
+  - Verify that the total value is preserved (input value equals output value, no funds are spent during update)
+
   - Ensure the new configuration is stored in the output datum
+
+  - Allows addition or removal of only one signer at a time
 
 \
 #pagebreak()
@@ -251,6 +261,7 @@ This action ensures that the number of signers meets or exceeds the specified th
         b: "threshold",
         c: "funds",
         d: "funds_qty", //Threshold count for withdrawal
+        e: "spending_limit",
       )
     ),
   ),
@@ -269,8 +280,11 @@ This action ensures that the number of signers meets or exceeds the specified th
        
       ),
       datum: (
-         a: "signers",
+        a: "signers",
         b: "threshold",
+        c: "funds",
+        d: "funds_qty", //Threshold count for withdrawal
+        e: "spending_limit",
       )
     ),
   ),
@@ -301,6 +315,7 @@ This action ensures that the number of signers meets or exceeds the specified th
       - `threshold`
       - `funds`
       - `funds_qty`
+      - `spending_limit`
 .
     - Value:
 
@@ -323,7 +338,8 @@ This action ensures that the number of signers meets or exceeds the specified th
       - `signers`
       - `threshold`
       - `funds`
-      - `funds_qty`    
+      - `funds_qty`  
+      - `spending_limit`  
       
     - Value:
 
@@ -353,7 +369,8 @@ updates the required signers threshold.
         b: "old_threshold",
         c: "funds",
         d: "old_funds_qty", //Threshold count for withdrawal
-      )
+        e: "spending_limit",
+  )
     ),
   ),
   outputs: (
@@ -370,6 +387,7 @@ updates the required signers threshold.
         b: "new_threshold",
         c: "funds",
         d: "old_funds_qty", //Threshold count for withdrawal
+        e: "spending_limit",
 
       )
     ),
@@ -397,6 +415,7 @@ updates the required signers threshold.
       - `old_threshold`
       - `funds`
       - `old_funds_qty`
+      - `old_spending_limit`
 
     - Value:
 
@@ -414,6 +433,7 @@ updates the required signers threshold.
       - `new_threshold`
       - `funds`
       - `new_funds_qty`
+      - `new_spending_limit`
 
     - Value: 
 
