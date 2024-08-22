@@ -1,12 +1,10 @@
 use aiken/cbor
 use aiken/dict
-use aiken/hash.{Blake2b_224, Hash}
 use aiken/interval
 use aiken/list
 use aiken/transaction.{
   Input, NoDatum, Output, ScriptContext, Spend, Transaction, TransactionId,
 }
-use aiken/transaction/credential.{Script, VerificationKey}
 use aiken/transaction/value.{Value}
 use assist/data
 use upgradable_multisig/tests

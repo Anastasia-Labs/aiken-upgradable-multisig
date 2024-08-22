@@ -1,7 +1,6 @@
 use aiken/bytearray
 use aiken/dict
 use aiken/hash.{blake2b_256}
-use aiken/interval.{Finite, Interval, IntervalBound}
 // use aiken/list
 use aiken/transaction.{
   InlineDatum, Input, Output, OutputReference, ScriptContext, Spend, Transaction,
