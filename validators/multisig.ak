@@ -12,43 +12,6 @@ use upgradable_multisig/types.{
   AssetClass, MultisigDatum, MultisigRedeemer, Sign, Update,
 }
 
-// Ensure that no assets are lost in the transaction
-fn value_preserved(input_value: Value, outputs: List<Output>) -> Bool {
-  trace @"Input value:"
-  trace cbor.diagnostic(input_value)
-  trace @"Outputs:"
-  trace cbor.diagnostic(outputs)
-
-  // Sum up all the values from the outputs into a single Value
-  let total_output_value =
-    outputs
-      |> list.foldl(
-          value.zero(),
-          fn(output, acc) { value.merge(acc, output.value) },
-        )
-  trace @"Total output value:"
-  trace cbor.diagnostic(total_output_value)
-
-  let flattened_input = value.flatten(input_value)
-  trace @"Flattened input value:"
-  trace cbor.diagnostic(flattened_input)
-
-  // Compare each asset in the input to ensure it's preserved in the output
-  flattened_input
-    |> list.all(
-        fn(asset) {
-          let (policy_id, asset_name, qty) = asset
-          let output_qty =
-            value.quantity_of(total_output_value, policy_id, asset_name)
-          trace @"Checking asset:"
-          trace cbor.diagnostic((policy_id, asset_name, qty))
-          trace @"Output quantity:"
-          trace cbor.diagnostic(output_qty)
-          output_qty >= qty
-        },
-      )
-}
-
 // Main validator function for the upgradable multisig contract
 validator {
   fn multisig_validator(
@@ -62,7 +25,21 @@ validator {
 
     let Transaction { inputs, outputs, extra_signatories, .. } = tx
 
+    // Check that there are no more inputs in the same address.
     expect Some(own_input) = transaction.find_input(inputs, output_reference)
+    let script_credential = own_input.output.address.payment_credential
+
+    // Filter inputs by the same script address
+    let script_inputs =
+      list.filter(
+        inputs,
+        fn(input) {
+          input.output.address.payment_credential == script_credential
+        },
+      )
+
+    // Ensure there's exactly one script input
+    expect list.length(script_inputs) == 1
 
     // Count the number of valid signers for this transaction
     let matching_signers =
@@ -79,13 +56,10 @@ validator {
     trace @"datum.threshold"
     trace cbor.diagnostic(datum.threshold)
 
-    // Perform common checks for both Sign and Update operations
-    let common_checks =
-      signed_by_majority? && value_preserved(own_input.output.value, outputs)?
-
     when redeemer is {
-      Sign -> common_checks && validate_sign(datum, own_input, outputs)
-      Update -> common_checks && validate_update(datum, own_input, outputs)
+      Sign -> signed_by_majority? && validate_sign(datum, own_input, outputs)
+      Update ->
+        signed_by_majority? && validate_update(datum, own_input, outputs)
     }
   }
 }
@@ -100,39 +74,32 @@ fn validate_sign(
   own_input: Input,
   outputs: List<Output>,
 ) -> Bool {
-  expect [own_output, recipient_output, ..] = outputs
+  expect [own_output, ..] = outputs
 
   trace @"own_output"
   trace cbor.diagnostic(own_output)
-  trace @"recipient_output"
-  trace cbor.diagnostic(recipient_output)
 
   let input_amount = get_asset_amount(own_input.output.value, datum.funds)
-  let recipient_amount = get_asset_amount(recipient_output.value, datum.funds)
   let output_amount = get_asset_amount(own_output.value, datum.funds)
   let transfer_amount = input_amount - output_amount
 
   trace @"input_amount"
   trace cbor.diagnostic(input_amount)
-  trace @"recipient_amount"
-  trace cbor.diagnostic(recipient_amount)
   trace @"output_amount"
   trace cbor.diagnostic(output_amount)
 
-  // Check if the transfer adheres to the spending rules
-  if
-  (input_amount != datum.funds_qty)? || (transfer_amount > datum.spending_limit)? || (recipient_amount != transfer_amount)?{
-  
-    False
-  } else {
+  expect output_datum: MultisigDatum = data.output_datum(own_output)
+
+  and {
+    // Check if the transfer adheres to the spending rules
+    (transfer_amount <= datum.spending_limit)?,
     // Validate that the datum is updated correctly
-    expect output_datum: MultisigDatum = data.output_datum(own_output)
-    is_datum_valid(datum, output_datum, output_amount)
+    datum_is_valid(datum, output_datum, output_amount)?,
   }
 }
 
 // Check if the output datum is valid 
-fn is_datum_valid(
+fn datum_is_valid(
   datum_in: MultisigDatum,
   datum_out: MultisigDatum,
   output_amount: Int,
@@ -140,23 +107,16 @@ fn is_datum_valid(
   let signers_valid = datum_out.signers == datum_in.signers
   let threshold_valid = datum_out.threshold == datum_in.threshold
   let asset_class_valid = datum_out.funds == datum_in.funds
-  let output_quantity_valid = datum_out.funds_qty == output_amount
-  trace @"datum_out.funds_qty"
-  trace cbor.diagnostic(datum_out.funds_qty)
   trace @"output_amount"
   trace cbor.diagnostic(output_amount)
 
   let spend_limit_valid = datum_out.spending_limit == datum_in.spending_limit
 
-  signers_valid? && threshold_valid? && asset_class_valid? && output_quantity_valid? && spend_limit_valid?
-}
-
-fn values_equal(a: Value, b: Value) -> Bool {
-  value.is_zero(value.merge(a, value.negate(b)))
+  signers_valid? && threshold_valid? && asset_class_valid? && spend_limit_valid?
 }
 
 fn validate_update(
-  input_datum: MultisigDatum,
+  _input_datum: MultisigDatum,
   own_input: Input,
   outputs: List<Output>,
 ) -> Bool {
@@ -166,39 +126,15 @@ fn validate_update(
   expect output_datum: MultisigDatum = data.output_datum(own_output)
   // Ensure the new signers list is not empty
   let new_signer_count = list.length(output_datum.signers)
-  let old_signer_count = list.length(input_datum.signers)
-  let signer_count_diff = new_signer_count - old_signer_count
 
   // Perform various checks on the new datum
-  if
-  (new_signer_count == 0)? || (output_datum.threshold <= 0)? || (output_datum.threshold > new_signer_count)? || (list.length(
-    list.unique(output_datum.signers),
-  ) != new_signer_count)? || (output_datum.funds_qty < 0)? || (output_datum.spending_limit <= 0)? || (output_datum.spending_limit > output_datum.funds_qty)? || (output_datum.funds_qty != get_asset_amount(
-    own_output.value,
-    output_datum.funds,
-  ))?{
-  
-    False
-  } else if signer_count_diff != 0 {
-    // Handle signer addition or removal
-    if signer_count_diff > 1 || signer_count_diff < -1 {
-      False
-    } else {
-      // Ensure new threshold is appropriate and value is preserved
-      //This ensures that the threshold is always at least a majority of the signers, 
-      //preventing a situation where a minority could control the multisig.
-      (output_datum.threshold >= new_signer_count / 2 + 1)? && values_equal(
-        own_output.value,
-        own_input.output.value,
-      )
-    }
-  } else {
-    // If signer count hasn't changed, ensure signers list is unchanged
-    // This prevents swapping out a signer without changing the count
-    (output_datum.signers == input_datum.signers)? && values_equal(
-      own_output.value,
-      own_input.output.value,
-    )
+  and {
+    (new_signer_count > 0)?,
+    (output_datum.threshold > 0)?,
+    (output_datum.threshold <= new_signer_count)?,
+    (list.length(list.unique(output_datum.signers)) == new_signer_count)?,
+    (output_datum.spending_limit > 0)?,
+    (own_output.value == own_input.output.value)?,
   }
 }
 
@@ -211,11 +147,10 @@ test success_sign() {
   let redeemer = Sign
 
   // Create input and output UTxOs
-  // let contract_total_value = 1_000_000_000_000
   let transaction_limit_value = 1_000_000_000
 
   // 100,000 ADA
-  let input_value = 100_000_000_000
+  let contract_value = 100_000_000_000
   // 99,000 ADA
   let output_value = 99_000_000_000
   // 1000 ADA
@@ -234,20 +169,24 @@ test success_sign() {
   trace cbor.diagnostic(threshold)
 
   let datum =
-    tests.test_multisig_datum(threshold, input_value, transaction_limit_value)
+    tests.test_multisig_datum(
+      threshold,
+      contract_value,
+      transaction_limit_value,
+    )
 
   let own_input =
     tests.test_context_input_01(
       init_output_ref,
       own_policy,
-      value.from_lovelace(input_value),
+      value.from_lovelace(contract_value),
       datum,
     )
 
   let output_datum =
     tests.test_multisig_datum(
       threshold,
-      input_value - change_value,
+      contract_value - change_value,
       transaction_limit_value,
     )
 
@@ -303,7 +242,7 @@ test success_update() {
   let redeemer = Update
 
   // Create input and output UTxOs
-  let input_value = 100_000_000_000
+  let contract_value = 100_000_000_000
 
   // 100,000 ADA
   let pubkey_hash_01 = tests.test_224_02()
@@ -328,22 +267,22 @@ test success_update() {
 
   // 2,000 ADA
   let old_datum =
-    tests.test_multisig_datum(old_threshold, input_value, old_spending_limit)
+    tests.test_multisig_datum(old_threshold, contract_value, old_spending_limit)
   let new_datum =
-    tests.test_multisig_datum(new_threshold, input_value, new_spending_limit)
+    tests.test_multisig_datum(new_threshold, contract_value, new_spending_limit)
 
   let own_input =
     tests.test_context_input_01(
       init_output_ref,
       own_policy,
-      value.from_lovelace(input_value),
+      value.from_lovelace(contract_value),
       old_datum,
     )
 
   let own_output =
     tests.test_utxo_02(
       own_policy,
-      value.from_lovelace(input_value),
+      value.from_lovelace(contract_value),
       // Same value as input
       new_datum,
     )

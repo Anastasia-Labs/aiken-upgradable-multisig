@@ -1,7 +1,6 @@
 use aiken/bytearray
 use aiken/dict
 use aiken/hash.{blake2b_256}
-// use aiken/list
 use aiken/transaction.{
   InlineDatum, Input, Output, OutputReference, ScriptContext, Spend, Transaction,
   TransactionId,
@@ -68,7 +67,6 @@ pub fn test_multisig_datum(signer_count, fee_qty, limit_qty) {
       policy_id: value.ada_policy_id,
       asset_name: value.ada_asset_name,
     },
-    funds_qty: fee_qty,
     spending_limit: limit_qty,
   }
 }

@@ -13,7 +13,6 @@ pub type MultisigDatum {
   signers: List<PubKeyHash>,
   threshold: Int,
   funds: AssetClass,
-  funds_qty: Int,
   spending_limit: Int,
 }
 
