@@ -168,12 +168,7 @@ test success_sign() {
   trace @"threshold"
   trace cbor.diagnostic(threshold)
 
-  let datum =
-    tests.test_multisig_datum(
-      threshold,
-      contract_value,
-      transaction_limit_value,
-    )
+  let datum = tests.test_multisig_datum(threshold, transaction_limit_value)
 
   let own_input =
     tests.test_context_input_01(
@@ -184,11 +179,7 @@ test success_sign() {
     )
 
   let output_datum =
-    tests.test_multisig_datum(
-      threshold,
-      contract_value - change_value,
-      transaction_limit_value,
-    )
+    tests.test_multisig_datum(threshold, transaction_limit_value)
 
   let own_output =
     tests.test_utxo_02(
@@ -266,10 +257,8 @@ test success_update() {
   let new_spending_limit = 2_000_000_000
 
   // 2,000 ADA
-  let old_datum =
-    tests.test_multisig_datum(old_threshold, contract_value, old_spending_limit)
-  let new_datum =
-    tests.test_multisig_datum(new_threshold, contract_value, new_spending_limit)
+  let old_datum = tests.test_multisig_datum(old_threshold, old_spending_limit)
+  let new_datum = tests.test_multisig_datum(new_threshold, new_spending_limit)
 
   let own_input =
     tests.test_context_input_01(

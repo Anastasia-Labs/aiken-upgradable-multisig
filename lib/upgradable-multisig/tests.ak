@@ -59,7 +59,7 @@ pub fn test_input_utxo_02(utxo_hash) {
   }
 }
 
-pub fn test_multisig_datum(signer_count, fee_qty, limit_qty) {
+pub fn test_multisig_datum(signer_count, limit_qty) {
   MultisigDatum {
     signers: [test_224_03(), test_224_04(), test_224_05()],
     threshold: signer_count,
