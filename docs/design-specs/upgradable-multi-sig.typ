@@ -181,8 +181,6 @@ The datum structure holds the current state of the multisig arrangement:
 
 - *`funds`:* AssetClass of the funds to be withdrawn.
 
-- *`funds_qty`:* The total amount of funds controlled by the contract
-
 - *`spending_limit`:* Max Amount of funds to be withdrawn per transaction.
 
 \
@@ -260,7 +258,6 @@ This action ensures that the number of signers meets or exceeds the specified th
         a: "signers",
         b: "threshold",
         c: "funds",
-        d: "funds_qty", //Threshold count for withdrawal
         e: "spending_limit",
       )
     ),
@@ -283,7 +280,6 @@ This action ensures that the number of signers meets or exceeds the specified th
         a: "signers",
         b: "threshold",
         c: "funds",
-        d: "funds_qty", //Threshold count for withdrawal
         e: "spending_limit",
       )
     ),
@@ -314,7 +310,6 @@ This action ensures that the number of signers meets or exceeds the specified th
       - `signers`
       - `threshold`
       - `funds`
-      - `funds_qty`
       - `spending_limit`
 .
     - Value:
@@ -337,8 +332,7 @@ This action ensures that the number of signers meets or exceeds the specified th
 
       - `signers`
       - `threshold`
-      - `funds`
-      - `funds_qty`  
+      - `funds`  
       - `spending_limit`  
       
     - Value:
@@ -368,7 +362,6 @@ updates the required signers threshold.
         a: "old_signers",
         b: "old_threshold",
         c: "funds",
-        d: "old_funds_qty", //Threshold count for withdrawal
         e: "spending_limit",
   )
     ),
@@ -386,7 +379,6 @@ updates the required signers threshold.
         a: "new_signers",
         b: "new_threshold",
         c: "funds",
-        d: "old_funds_qty", //Threshold count for withdrawal
         e: "spending_limit",
 
       )
@@ -414,7 +406,6 @@ updates the required signers threshold.
       - `old_signers`
       - `old_threshold`
       - `funds`
-      - `old_funds_qty`
       - `old_spending_limit`
 
     - Value:
@@ -432,7 +423,6 @@ updates the required signers threshold.
       - `new_signers`
       - `new_threshold`
       - `funds`
-      - `new_funds_qty`
       - `new_spending_limit`
 
     - Value: 
