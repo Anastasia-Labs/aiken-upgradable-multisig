@@ -59,9 +59,9 @@ pub fn test_input_utxo_02(utxo_hash) {
   }
 }
 
-pub fn test_multisig_datum(signer_count, limit_qty) {
+pub fn test_multisig_datum(signitories, signer_count, limit_qty) {
   MultisigDatum {
-    signers: [test_224_03(), test_224_04(), test_224_05()],
+    signers: signitories,
     threshold: signer_count,
     funds: AssetClass {
       policy_id: value.ada_policy_id,
