@@ -1,4 +1,3 @@
-use aiken/bytearray
 use aiken/cbor
 use aiken/dict
 use aiken/interval
@@ -8,7 +7,7 @@ use aiken/transaction.{
 }
 use aiken/transaction/value.{Value}
 use assist/data
-use upgradable_multisig/tests
+use upgradable_multisig/tests/tests
 use upgradable_multisig/types.{
   AssetClass, MultisigDatum, MultisigRedeemer, Sign, Update,
 }
