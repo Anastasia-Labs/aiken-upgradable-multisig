@@ -1,3 +1,4 @@
+use aiken/bytearray
 use aiken/cbor
 use aiken/dict
 use aiken/interval
@@ -45,18 +46,10 @@ validator {
     let matching_signers =
       list.filter(extra_signatories, fn(sig) { list.has(datum.signers, sig) })
 
-    // trace @"extra_signatories"
-    // trace cbor.diagnostic(list.length(extra_signatories))
-    // trace @"matching_signers"
-    // trace cbor.diagnostic(matching_signers)
     // Check if the number of valid signers meets or exceeds the threshold
     let signed_within_threshold =
       list.length(matching_signers) >= datum.threshold
 
-    // trace @"signed_within_threshold"
-    // trace cbor.diagnostic(signed_within_threshold)
-    // trace @"datum.threshold"
-    // trace cbor.diagnostic(datum.threshold)
     when redeemer is {
       Sign ->
         signed_within_threshold? && validate_sign(datum, own_input, outputs)
@@ -78,16 +71,10 @@ fn validate_sign(
 ) -> Bool {
   expect [own_output, ..] = outputs
 
-  // trace @"own_output"
-  // trace cbor.diagnostic(own_output)
   let input_amount = get_asset_amount(own_input.output.value, datum.funds)
   let output_amount = get_asset_amount(own_output.value, datum.funds)
   let transfer_amount = input_amount - output_amount
 
-  // trace @"input_amount"
-  // trace cbor.diagnostic(input_amount)
-  // trace @"output_amount"
-  // trace cbor.diagnostic(output_amount)
   expect output_datum: MultisigDatum = data.output_datum(own_output)
 
   and {
@@ -104,8 +91,6 @@ fn datum_is_valid(datum_in: MultisigDatum, datum_out: MultisigDatum) -> Bool {
   let threshold_valid = datum_out.threshold == datum_in.threshold
   let asset_class_valid = datum_out.funds == datum_in.funds
 
-  // trace @"output_amount"
-  // trace cbor.diagnostic(output_amount)
   let spend_limit_valid = datum_out.spending_limit == datum_in.spending_limit
 
   signers_valid? && threshold_valid? && asset_class_valid? && spend_limit_valid?
@@ -210,22 +195,24 @@ test success_sign() {
       },
     }
 
-  trace @"Total Signitories"
+  trace @"Test: Successful Transaction Signing"
+  trace @"Total number of signatories in the multisig"
   trace cbor.diagnostic(list.length(signatories))
-  trace @"Threshold"
+  trace @"Required threshold of signatures"
   trace cbor.diagnostic(threshold)
-  trace @"Actual Signitories"
+  trace @"Number of signatories actually signing this transaction"
   trace cbor.diagnostic(
     list.length([pubkey_hash_01, pubkey_hash_02, pubkey_hash_03]),
   )
-  trace @"Contract Amount"
+  trace @"Total amount in the contract (in lovelace)"
   trace cbor.diagnostic(contract_value)
-  trace @"Spending limit"
+  trace @"Maximum spending limit per transaction (in lovelace)"
   trace cbor.diagnostic(transaction_limit_value)
-  trace @"Withdrawal Asset Output Amount"
+  trace @"Amount being withdrawn in this transaction (in lovelace)"
   trace cbor.diagnostic(withdrawal_value)
-  trace @"Contract Asset Output Amount"
+  trace @"Remaining amount in the contract after withdrawal (in lovelace)"
   trace cbor.diagnostic(output_value)
+  trace @"Result: Transaction successfully signed and executed!"
 
   // Call the validator function
   multisig_validator(datum, redeemer, context)
@@ -259,8 +246,6 @@ test reject_insufficient_signatures() {
 
   let threshold = list.length(signatories) / 2 + 1
 
-  // trace @"threshold"
-  // trace cbor.diagnostic(threshold)
   let datum =
     tests.test_multisig_datum(signatories, threshold, transaction_limit_value)
 
@@ -309,20 +294,22 @@ test reject_insufficient_signatures() {
       },
     }
 
-  trace @"Total Signitories"
+  trace @"Test: Rejecting Transaction with Insufficient Signatures"
+  trace @"Total number of signatories in the multisig"
   trace cbor.diagnostic(list.length(signatories))
-  trace @"Threshold"
+  trace @"Required threshold of signatures"
   trace cbor.diagnostic(threshold)
-  trace @"Actual Signitories"
+  trace @"Number of signatories actually signing this transaction"
   trace cbor.diagnostic(list.length([pubkey_hash_01, pubkey_hash_02]))
-  trace @"Contract Amount"
+  trace @"Total amount in the contract (in lovelace)"
   trace cbor.diagnostic(contract_value)
-  trace @"Spending limit"
+  trace @"Maximum spending limit per transaction (in lovelace)"
   trace cbor.diagnostic(transaction_limit_value)
-  trace @"Withdrawal Asset Output Amount"
+  trace @"Attempted withdrawal amount (in lovelace)"
   trace cbor.diagnostic(withdrawal_value)
-  trace @"Contract Asset Output Amount"
+  trace @"Contract amount if withdrawal were allowed (in lovelace)"
   trace cbor.diagnostic(output_value)
+  trace @"Result: Transaction rejected due to insufficient signatures!"
 
   // Call the validator function
   !multisig_validator(datum, redeemer, context)
@@ -392,11 +379,22 @@ test success_adjust_threshold() {
       },
     }
 
-  trace @"Old Threshold"
+  trace @"Test: Successfully Adjusting Signature Threshold"
+  trace @"Original signature threshold"
   trace cbor.diagnostic(old_threshold)
-  trace @"New Threshold"
+  trace @"Total number of signatories in the multisig"
+  trace cbor.diagnostic(list.length(signatories))
+  trace @"Current contract value (in lovelace)"
+  trace cbor.diagnostic(value.from_lovelace(contract_value))
+  trace @"User clicks on action Redeemer: Update"
+  trace cbor.diagnostic(redeemer)
+  trace @"New threshold value"
   trace cbor.diagnostic(new_threshold)
-
+  trace @"Number of signatories approving this change"
+  trace cbor.diagnostic(list.length(signatories))
+  trace @"Contract value after threshold adjustment (should be unchanged)"
+  trace cbor.diagnostic(value.from_lovelace(contract_value))
+  trace @"Result: Signature threshold successfully updated!"
   // Call the validator function
   multisig_validator(old_datum, redeemer, context)
 }
@@ -472,10 +470,24 @@ test success_add_signer() {
       },
     }
 
-  trace @"Old Signatories Count"
+  trace @"Test: Successfully Adding a New Signer to the Multisig Contract"
+  trace @"Number of signatories before addition"
   trace cbor.diagnostic(list.length(old_signatories))
-  trace @"New Signatories Count"
+  trace @"Current contract value (in lovelace)"
+  trace cbor.diagnostic(contract_value)
+  trace @"Current signature threshold"
+  trace cbor.diagnostic(threshold)
+  trace @"Number of signatories approving this change"
+  trace cbor.diagnostic(list.length(old_signatories))
+  trace @"Redeemer used for this operation"
+  trace cbor.diagnostic(redeemer)
+  trace @"Number of signatories after addition"
   trace cbor.diagnostic(list.length(new_signatories))
+  trace @"Signature threshold after addition (unchanged)"
+  trace cbor.diagnostic(threshold)
+  trace @"Contract value after adding signer (should be unchanged)"
+  trace cbor.diagnostic(contract_value)
+  trace @"Result: New signer successfully added to the multisig!"
 
   // Call the validator function
   multisig_validator(old_datum, redeemer, context)
@@ -547,15 +559,24 @@ test success_remove_signer() {
       },
     }
 
-  trace @"Old Signatories Count"
+  trace @"Test: Successfully Removing a Signer from the Multisig Contract"
+  trace @"Current contract value (in lovelace)"
+  trace cbor.diagnostic(contract_value)
+  trace @"Number of signatories before removal"
   trace cbor.diagnostic(list.length(old_signatories))
-  trace @"New Signatories Count"
-  trace cbor.diagnostic(list.length(new_signatories))
-  trace @"Old Threshold"
+  trace @"Signature threshold before removal"
   trace cbor.diagnostic(old_threshold)
-  trace @"New Threshold"
+  trace @"Number of signatories approving this change"
+  trace cbor.diagnostic(list.length(old_signatories))
+  trace @"Redeemer used for this operation"
+  trace cbor.diagnostic(redeemer)
+  trace @"Number of signatories after removal"
+  trace cbor.diagnostic(list.length(new_signatories))
+  trace @"Signature threshold after removal and adjustment (Can be changed)"
   trace cbor.diagnostic(new_threshold)
+  trace @"Contract value after removing signer (should be unchanged)"
+  trace cbor.diagnostic(contract_value)
+  trace @"Result: Signer successfully removed and threshold adjusted"
 
-  // Call the validator function
   multisig_validator(old_datum, redeemer, context)
 }
