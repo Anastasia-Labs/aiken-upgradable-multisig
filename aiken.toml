@@ -14,3 +14,8 @@ platform = "github"
 name = "aiken-lang/stdlib"
 version = "1.9.0"
 source = "github"
+
+[[dependencies]]
+name = "logicalmechanism/assist"
+version = "v0.4.10"
+source = "github"
