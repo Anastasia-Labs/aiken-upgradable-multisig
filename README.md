@@ -122,9 +122,6 @@ Test results:
 Each test case is designed to validate specific aspects of the multi-signature
 contract,To run only specific tests, do:
 
-Each test case is designed to validate specific aspects of the multi-signature
-contract,To run only specific tests, do:
-
 ```sh
 aiken check -m `test_case_function_name`
 ```
