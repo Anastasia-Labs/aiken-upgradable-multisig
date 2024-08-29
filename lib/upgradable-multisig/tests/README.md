@@ -168,13 +168,6 @@ parameters.
 This streamlined process ensures that threshold adjustments are both secure and
 user-friendly.
 
-### User Feedback
-
-> "The process of adjusting the signer threshold was intuitive and
-> straightforward. The clear visuals helped us understand the proposed changes,
-> and the signature collection process felt secure." - John Doe, Contract
-> Administrator
-
 ## 3. Dynamic Addition or Removal of Signers
 
 The contract allows for flexible management of the signer pool, adapting to
