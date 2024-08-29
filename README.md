@@ -16,9 +16,9 @@ you to:
 
 For a comprehensive understanding of the contract's architecture, design
 decisions, and implementation details, please refer to the
-[Design Documentation](https://github.com/Anastasia-Labs/aiken-upgradable-multisig/blob/endpoints/docs/design-specs/upgradable-multi-sig.pdf).
-This documentation provides in-depth insights into the contract's design,
-including its components, and detailed explanations of its functionality.
+[Design Documentation](/docs/design-specs/upgradable-multi-sig.pdf). This
+documentation provides in-depth insights into the contract's design, including
+its components, and detailed explanations of its functionality.
 
 ## Contract Functionality
 
@@ -105,7 +105,7 @@ To demonstrate and validate these following functionalities,
 
 We have prepared comprehensive test cases. For detailed evidence and to view the
 test cases associated with these criteria, please refer to the
-[Test Documentation](https://github.com/Anastasia-Labs/aiken-upgradable-multisig/blob/endpoints/lib/upgradable-multisig/tests/README.md)
+[Test Documentation](/lib/upgradable-multisig/tests)
 
 To run all tests, simply do:
 
