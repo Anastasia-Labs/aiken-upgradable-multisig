@@ -126,18 +126,19 @@
 = Introduction
 \
 
-With this project, we set out to build an upgradable multi-signature contract designed for secure transactions on the Cardano blockchain. It requires multiple signatures to authorize a transaction with a threshold that can be adjusted based on the signitories requirements.
+Our project aims to develop an upgradable multi-signature contract for secure transactions on the Cardano blockchain. This contract requires multiple signatures to authorize transactions, with adjustable thresholds based on signatory requirements.
 
-It enables you to:
+Key features include:
 
-- Set up a multi-signature wallet with a list of authorized signatories.
+- Setting up a multi-signature wallet with authorized signatories
 
-- Define a threshold for the number of signatures required to approve transactions.
-- Update the list of signatories and the threshold as needed.
-- Enforce spending limits for transactions.
+- Defining and adjusting the threshold for required signatures
 
-In this report, we briefly discuss our changes and highlight our progress, focusing on Secure Spending of Assets, Seamless Adjustment of Signer Thresholds, and Dynamic Addition or Removal of Signers. Each section provides detailed insights into the functionality, security, and
-usability of the smart contract.
+- Updating the list of signatories
+
+- Enforcing spending limits for transactions
+
+This report demonstrates our progress in implementing Secure Spending of Assets, Seamless Adjustment of Signer Thresholds, and Dynamic Addition or Removal of Signers.
 
 #pagebreak()
 
@@ -151,7 +152,7 @@ Our upgradable multi-signature smart contract has been rigorously tested to ensu
 \
 === Test Case: Successful Transaction
 \
-The test case code can be viewed on the #test_success_sign_link
+We've implemented a test case to validate the contract's ability to execute transactions when properly authorized and the implementation can be viewed on the #test_success_sign_link
 
  ```bash
 
@@ -192,7 +193,7 @@ The test confirms that the contract correctly processes transactions when the re
 
 === Test Case: Rejected Insufficient Signatures
 \
-The test case code can be found on the #reject_insufficient_signatures_link
+To demonstrate the contract's security measures, we've implemented a test case for rejecting transactions with insufficient signatures with the implementation on the #reject_insufficient_signatures_link
 
 \
  ```bash
@@ -230,7 +231,7 @@ This test demonstrates the contract’s robust security measures by successfully
 \ 
 The smart contract features a robust and user-friendly mechanism that allows authorized members to adjust the signer thresholds without compromising security. This functionality is crucial for adapting to evolving security requirements and organizational changes. The process ensures that any adjustments to the number of required signatures for transaction approval are carried out smoothly and securely. Authorized members can modify the threshold with ease, while the contract's built-in security measures maintain the integrity of the approval process. This adaptability is vital for maintaining both the flexibility and security of the multi-signature system as conditions and needs change.
 
-
+\
 == Threshold Adjustment Workflow
 \
 + *Initiate Threshold Change:* Users can propose new threshold values through an intuitive interface.
@@ -247,7 +248,7 @@ This streamlined process ensures that threshold adjustments are both secure and 
 \
 === Test Case: Successful Threshold Adjustment  
 \
-The test case code can be found on the #success_adjust_threshold_link
+We've implemented a test case to verify the contract's ability to adjust the signer threshold the following link: #success_adjust_threshold_link
 
 \
 ```bash
@@ -301,7 +302,7 @@ Showcase of the smart contract’s capability to dynamically add or remove signe
 \
 ==== Test Case: Successful Signer Addition
 \
-The test case code can be found on the #success_add_signer_link
+We've implemented a test case to confirm the contract's ability to add a new signer on the #success_add_signer_link
 \
 ```bash
    Testing ...
@@ -397,6 +398,14 @@ Threshold adjustments may be required before certain signer removals to maintain
 #pagebreak()
 = Conclusion
 \
-The Upgradable Multi-signature Smart Contract demonstrates robust security, flexibility, and user-centric design. Through comprehensive testing and thoughtful process implementation, it effectively manages secure asset spending, allows for seamless threshold adjustments, and facilitates dynamic signer management.
+Our upgradable multi-signature contract successfully meets all the acceptance criteria:
 
-These features collectively ensure that the contract can adapt to evolving organizational needs while maintaining the highest standards of security and usability.
++ Secure Spending of Assets: We've demonstrated that only authorized members can execute transactions, with robust checks for signature thresholds and spending limits.
+
++ Seamless Adjustment of Signer Thresholds: Our contract allows for easy adjustment of signature thresholds while maintaining security, as shown in our threshold adjustment test.
+
++ Dynamic Addition or Removal of Signers: We've implemented and tested functionality for both adding and removing signers, showcasing the contract's flexibility in managing the signer pool.
+
+All documentation, including detailed test cases and explanations, is available in our GitHub repository: https://github.com/Anastasia-Labs/plug-n-play-contracts
+
+This upgradable multi-signature contract provides a secure, flexible, and user-friendly solution for managing shared assets on the Cardano blockchain.
