@@ -1,7 +1,7 @@
 use aiken/hash.{Blake2b_224, Hash}
 use aiken/transaction/credential.{VerificationKey}
 
-type PubKeyHash =
+pub type PubKeyHash =
   Hash<Blake2b_224, VerificationKey>
 
 pub type AssetClass {
@@ -17,6 +17,6 @@ pub type MultisigDatum {
 }
 
 pub type MultisigRedeemer {
-  Sign
-  Update
+  Sign { input_index: Int, output_index: Int }
+  Update { input_index: Int, output_index: Int }
 }
