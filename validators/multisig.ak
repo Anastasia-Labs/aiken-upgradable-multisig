@@ -18,8 +18,6 @@ validator {
 
     when r is {
       InitMultiSig { output_reference, input_index } ->
-        // Ensure this outref is spent in this transaction
-
         validate_initiate_multisig(
           own_policy,
           output_reference,

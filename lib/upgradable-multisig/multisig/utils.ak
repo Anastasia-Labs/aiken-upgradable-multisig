@@ -12,7 +12,7 @@ pub fn get_input_by_token(inputs: List<Input>, policy_id: PolicyId) {
 }
 
 pub fn validate_multisig_datum(datum: MultisigDatum) -> Bool {
-  (list.length(datum.signers) > 1)? && (datum.threshold > 0)? && (datum.spending_limit > 2)?
+  (list.length(datum.signers) > 1)? && (datum.threshold > 0)? && (datum.spending_limit > 2_000_000)?
 }
 
 // Helper function to get the amount of a specific asset from a Value

@@ -165,6 +165,7 @@ pub fn validate_update(
         (list.length(list.unique(output_datum.signers)) == new_signer_count)?,
         (output_datum.spending_limit > 0)?,
         (own_output.value == own_input.value)?,
+        (value.quantity_of(own_output.value, policy_id, asset_name) == 1)?,
       }
     },
     (input_index, output_index),
