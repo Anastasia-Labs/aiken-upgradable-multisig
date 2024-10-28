@@ -42,25 +42,51 @@ pub fn validate_token_output(
   token_quantity == 1 && payment_credential == credential
 }
 
+fn has_enough_signers(
+  all_signers: List<PubKeyHash>,
+  threshold: Int,
+  actual_signers: List<PubKeyHash>,
+) -> Bool {
+  when all_signers is {
+    [] -> False
+    [head, ..tail] ->
+      if list.has(actual_signers, head) {
+        if threshold > 1 {
+          has_enough_signers(tail, threshold - 1, actual_signers)
+        } else {
+          True
+        }
+      } else {
+        has_enough_signers(tail, threshold, actual_signers)
+      }
+  }
+}
+
 pub fn signed_within_threshold(
   datum: MultisigDatum,
   extra_signatories: List<PubKeyHash>,
 ) -> Bool {
-  let signer_count_length =
-    list.foldr(
-      extra_signatories,
-      0,
-      fn(current_signer, accumulator) -> Int {
-        if list.has(datum.signers, current_signer) {
-          accumulator + 1
-        } else {
-          accumulator
-        }
-      },
-    )
-
-  and {
-    signer_count_length >= datum.threshold,
-    True,
-  }
+  has_enough_signers(datum.signers, datum.threshold, extra_signatories)
 }
+// pub fn signed_within_threshold(
+//   datum: MultisigDatum,
+//   extra_signatories: List<PubKeyHash>,
+// ) -> Bool {
+//   let signer_count_length =
+//     list.foldr(
+//       extra_signatories,
+//       0,
+//       fn(current_signer, accumulator) -> Int {
+//         if list.has(datum.signers, current_signer) {
+//           accumulator + 1
+//         } else {
+//           accumulator
+//         }
+//       },
+//     )
+
+//   and {
+//     signer_count_length >= datum.threshold,
+//     True,
+//   }
+// }
