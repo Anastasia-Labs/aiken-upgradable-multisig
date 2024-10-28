@@ -55,7 +55,7 @@
   ]
 ]
 
-#let tx_out(input, position, inputHeight, styles) = {
+#let tx_out(input, position, inputHeight) = {
   let address = if "address" in input [
     *Address: #h(0.5em) #input.address*
   ] else []
@@ -77,9 +77,9 @@
       ..input.datum.pairs().map(((k,val)) => datum_field(1.2em, k, val))
     )
   ] else []
-  let addressHeight = measure(address, styles).height + if "address" in input { 6pt } else { 0pt }
-  let valueHeight = measure(value, styles).height + if "value" in input { 6pt } else { 0pt }
-  let datumHeight = measure(datum, styles).height + if "datum" in input { 6pt } else { 0pt }
+  let addressHeight = measure(address).height + if "address" in input { 6pt } else { 0pt }
+  let valueHeight = measure(value).height + if "value" in input { 6pt } else { 0pt }
+  let datumHeight = measure(datum).height + if "datum" in input { 6pt } else { 0pt }
   let thisHeight = 32pt + addressHeight + valueHeight + datumHeight
   return (
     content: place(dx: position.x, dy: position.y, [
@@ -94,7 +94,7 @@
   )
 }
 
-#let transaction(name, inputs: (), outputs: (), signatures: (), certificates: (), validRange: none, show_mints: true, notes: none) = style(styles => {
+#let transaction(name, inputs: (), outputs: (), signatures: (), certificates: (), validRange: none, show_mints: true, notes: none) = context {
   let inputHeightEstimate = inputs.fold(0pt, (sum, input) => sum + tx_out_height_estimate(input))
   let inputHeight = 0em
   let mint = (:)
@@ -112,7 +112,7 @@
           }
         }
 
-        let tx_out = tx_out(input, start, inputHeight, styles)
+        let tx_out = tx_out(input, start, inputHeight)
 
         tx_out.content
 
@@ -148,7 +148,7 @@
           }
         }
 
-        let tx_out = tx_out(output, start, outputHeight, styles)
+        let tx_out = tx_out(output, start, outputHeight)
         tx_out.content
         start = (x: start.x, y: start.y + tx_out.height)
         outputHeight += tx_out.height
@@ -237,11 +237,11 @@
     transaction,    
     outputs
   )
-  let size = measure(diagram, styles)
+  let size = measure(diagram)
   block(width: 100%, height: size.height)[
     #set align(center)
     #diagram
     #if notes != none [ *Note*: #notes ]
   ]
-})
+};)
 
