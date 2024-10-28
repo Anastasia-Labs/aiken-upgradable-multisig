@@ -15,7 +15,6 @@ validator {
     let ScriptContext { transaction: tx, purpose } = ctx
     expect Mint(own_policy) = purpose
 
-    // let Transaction { .. } = tx
     when r is {
       InitMultiSig { output_reference, input_index, output_index } ->
         validate_initiate_multisig(

@@ -25,7 +25,6 @@ pub fn validate_initiate_multisig(
   // Ensure this outref is spent in this transaction
   let is_outref_spent = own_input.output_reference == output_reference
 
-  // expect [multisig_output, ..] = tx.outputs
   // Extract datums
   expect multisig_datum: MultisigDatum = data.output_datum(own_output)
 

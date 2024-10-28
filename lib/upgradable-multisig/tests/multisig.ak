@@ -317,7 +317,6 @@ test reject_insufficient_signatures() {
     )
   let own_output =
     tests.test_utxo_02(own_policy, multisig_out_value, output_datum)
-  // let recipient_output = tests.test_utxo_02(own_policy, withdrawal_value, NoDatum)
   let recipient_output =
     tests.test_user_utxo(
       tests.test_withdraw_pkh(),
@@ -463,7 +462,6 @@ test success_add_signer() {
   let tx_hash = tests.test_224_01()
   let init_output_ref = tests.test_input_utxo_02(tx_hash)
 
-  //   let redeemer = Update
   // Create input and output UTxOs
   let contract_value = 100_000_000_000
 
