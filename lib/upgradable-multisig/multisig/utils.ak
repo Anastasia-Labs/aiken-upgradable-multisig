@@ -68,25 +68,3 @@ pub fn signed_within_threshold(
 ) -> Bool {
   has_enough_signers(datum.signers, datum.threshold, extra_signatories)
 }
-// pub fn signed_within_threshold(
-//   datum: MultisigDatum,
-//   extra_signatories: List<PubKeyHash>,
-// ) -> Bool {
-//   let signer_count_length =
-//     list.foldr(
-//       extra_signatories,
-//       0,
-//       fn(current_signer, accumulator) -> Int {
-//         if list.has(datum.signers, current_signer) {
-//           accumulator + 1
-//         } else {
-//           accumulator
-//         }
-//       },
-//     )
-
-//   and {
-//     signer_count_length >= datum.threshold,
-//     True,
-//   }
-// }
