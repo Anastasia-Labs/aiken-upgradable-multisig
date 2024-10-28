@@ -1,4 +1,4 @@
-use aiken/transaction.{Mint, ScriptContext, Transaction}
+use aiken/transaction.{Mint, ScriptContext}
 use upgradable_multisig/multisig/validation.{
   validate_initiate_multisig, validate_multisig_end, validate_sign,
   validate_update,
@@ -14,14 +14,15 @@ validator {
   fn multisig_policy(r: MintMultisig, ctx: ScriptContext) -> Bool {
     let ScriptContext { transaction: tx, purpose } = ctx
     expect Mint(own_policy) = purpose
-    let Transaction { .. } = tx
 
+    // let Transaction { .. } = tx
     when r is {
-      InitMultiSig { output_reference, input_index } ->
+      InitMultiSig { output_reference, input_index, output_index } ->
         validate_initiate_multisig(
           own_policy,
           output_reference,
           input_index,
+          output_index,
           tx,
         )?
 

@@ -15,18 +15,19 @@ pub fn validate_initiate_multisig(
   own_policy: PolicyId,
   output_reference: OutputReference,
   input_index: Int,
+  output_index: Int,
   tx: Transaction,
 ) -> Bool {
   let minted_tokens = tx.mint |> from_minted_value()
-  expect Some(init_input) = list.at(tx.inputs, input_index)
+  expect Some(own_input) = list.at(tx.inputs, input_index)
+  expect Some(own_output) = list.at(tx.outputs, output_index)
   let multisig_credential = credential.ScriptCredential(own_policy)
   // Ensure this outref is spent in this transaction
-  let is_outref_spent = init_input.output_reference == output_reference
+  let is_outref_spent = own_input.output_reference == output_reference
 
-  expect [multisig_output, ..] = tx.outputs
-
+  // expect [multisig_output, ..] = tx.outputs
   // Extract datums
-  expect multisig_datum: MultisigDatum = data.output_datum(multisig_output)
+  expect multisig_datum: MultisigDatum = data.output_datum(own_output)
 
   // Create a unique token name
   let sig_tkn_name =
@@ -44,11 +45,10 @@ pub fn validate_initiate_multisig(
   // Ensure token output goes back to the script
   let multisig_token_to_script =
     validate_token_output(
-      multisig_output,
+      own_output,
       own_policy,
       sig_tkn_name,
       multisig_credential,
-      True,
     )
 
   and {

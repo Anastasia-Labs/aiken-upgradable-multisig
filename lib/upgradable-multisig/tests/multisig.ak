@@ -17,7 +17,6 @@ test succeed_initiate_multisig() {
   let tx_hash = tests.test_224_01()
 
   let init_output_ref = tests.test_input_utxo_02(tx_hash)
-  let input_index = 0
 
   let multisig_token_name = values.unique_token_name(tx_hash, 1, #"")
 
@@ -80,7 +79,8 @@ test succeed_initiate_multisig() {
   validate_initiate_multisig(
     own_policy,
     init_output_ref,
-    input_index,
+    0,
+    0,
     context.transaction,
   )
 }
@@ -90,7 +90,6 @@ test succeed_end_multisig() {
   let tx_hash = tests.test_224_01()
 
   let init_output_ref = tests.test_input_utxo_02(tx_hash)
-  let input_index = 0
 
   let multisig_token_name = values.unique_token_name(tx_hash, 1, #"")
 
@@ -150,7 +149,8 @@ test succeed_end_multisig() {
   validate_initiate_multisig(
     own_policy,
     init_output_ref,
-    input_index,
+    0,
+    0,
     context.transaction,
   )
 }

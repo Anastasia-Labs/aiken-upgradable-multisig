@@ -23,6 +23,10 @@ pub type MultisigRedeemer {
 }
 
 pub type MintMultisig {
-  InitMultiSig { output_reference: OutputReference, input_index: Int }
+  InitMultiSig {
+    output_reference: OutputReference,
+    input_index: Int,
+    output_index: Int,
+  }
   EndMultiSig { datum: MultisigDatum, input_index: Int }
 }
