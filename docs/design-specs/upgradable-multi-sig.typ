@@ -138,15 +138,6 @@ The architecture consists of a single multi-validator contracts that manages the
   - Handling contract upgrades
   - Verifying signatures and authenticating transactions
 
-
-// + *Multisig Policy*
-  
-// This contract  plays a key role in maintaining the uniqueness and integrity of each multi-sig setup by:
-
-//   - Minting a non-fungible identification token that must always be present in the Multi-sig Validator UTxO.
-
-//   - Controlling the minting process to ensure it only occurs during legitimate setup
-
 #pagebreak()
 #v(50pt)
 
@@ -237,6 +228,7 @@ The Multi-sig Contract is the primary contract responsible for managing the list
 #pagebreak()
 #v(50pt)
 
+\
 ==== Spend Purpose
 \
 The contract uses the Spend purpose, allowing it to handle spending operations such as signing transactions and updating the multi-sig configuration.
@@ -327,6 +319,7 @@ The contract supports two types of operations, represented by the redeemer:
 #pagebreak()
 #v(50pt)
 
+\
 = Transactions
 \
 This section outlines the various transactions involved in the Upgradable Multi-Signature Contract on the Cardano blockchain.
@@ -336,6 +329,7 @@ This section outlines the various transactions involved in the Upgradable Multi-
 \
 This transaction initializes the multi-sig contract by minting the Multisig NFT and setting up the initial configuration.
 
+\
 #transaction(
   "InitMultiSig",
   inputs: (
@@ -345,7 +339,6 @@ This transaction initializes the multi-sig contract by minting the Multisig NFT 
       value: (
         ada: 1000000,
       ),
-      // redeemer: "InitiateMultiSig",
     ),
   ),
   outputs: (
@@ -357,11 +350,10 @@ This transaction initializes the multi-sig contract by minting the Multisig NFT 
         Multisig_NFT: 1,
       ),
       datum: (
-        signers: ("Signer A", "Signer B", "Signer C", "Signer D"),
+        signers: (`Signer A`, `Signer B`, `Signer C`, `Signer D`),
         threshold: 2,
-        spending_limit: 500000,
-        transaction_limit_value: (ada: 1000000),
-        nft_token_name: "MultisigNFT",
+        spending_limit: `500000`,
+        transaction_limit_value: (ada: `1000000`),
       ),
     ),
     (
@@ -430,7 +422,7 @@ This transaction initializes the multi-sig contract by minting the Multisig NFT 
 
 #pagebreak()
 #v(50pt)
-
+\
 == Mint :: EndMultiSig
 
 \
@@ -448,11 +440,10 @@ This transaction terminates the multi-sig contract by burning the Multisig NFT a
         Multisig_NFT: 1,
       ),
       datum: (
-        signers: ("Signer A", "Signer B", "Signer C"),
+        signers: (`Signer A`, `Signer B`, `Signer C`),
         threshold: 2,
-        spending_limit: 500000,
-        transaction_limit_value: (ada: 1000000),
-        nft_token_name: "MultisigNFT",
+        spending_limit: `500000`,
+        transaction_limit_value: (ada: `1000000`),
       ),
       // redeemer: "EndMultiSig",
     ),
@@ -462,21 +453,28 @@ This transaction terminates the multi-sig contract by burning the Multisig NFT a
       name: "Signer A UTxO",
       address: "signer_A_wallet",
       value: (
-        ada: 333333,
+        ada: 250000,
       ),
     ),
     (
       name: "Signer B UTxO",
       address: "signer_B_wallet",
       value: (
-        ada: 333333,
+        ada: 250000,
       ),
     ),
     (
       name: "Signer C UTxO",
       address: "signer_C_wallet",
       value: (
-        ada: 333333,
+        ada: 250000,
+      ),
+    ),
+     (
+      name: "Signer D UTxO",
+      address: "signer_D_wallet",
+      value: (
+        ada: 250000,
       ),
     ),
   ),
@@ -529,7 +527,7 @@ This transaction terminates the multi-sig contract by burning the Multisig NFT a
 
 #pagebreak()
 #v(50pt)
-
+\
 == Spend :: Sign
 \
 
@@ -547,10 +545,10 @@ This transaction ensures that the number of signers meets or exceeds the specifi
         Multisig_NFT: 1,
       ),
       datum: (
-        signers: ("Signer A", "Signer B", "Signer C"),
+        signers: (`Signer A`, `Signer B`, `Signer C`),
         threshold: 2,
-        spending_limit: 500000,
-        transaction_limit_value: (ada: 1000000),
+        spending_limit: `500000`,
+        transaction_limit_value: (ada: `1000000`),
       ),
       // redeemer: "Sign",
     ),
@@ -571,10 +569,10 @@ This transaction ensures that the number of signers meets or exceeds the specifi
         Multisig_NFT: 1,
       ),
       datum: (
-        signers: ("Signer A", "Signer B", "Signer C"),
+        signers: (`Signer A`, `Signer B`, `Signer C`),
         threshold: 2,
-        spending_limit: 500000,
-        transaction_limit_value: (ada: 1000000),
+        spending_limit: `500000`,
+        transaction_limit_value: (ada: `1000000`),
       ),
     ),
   ),
@@ -631,7 +629,7 @@ This transaction ensures that the number of signers meets or exceeds the specifi
 
 #pagebreak()
 #v(50pt)
-
+\
 === Spend :: Update
   \
 
@@ -650,10 +648,10 @@ updates the required signers threshold.
         Multisig_NFT: 1,
       ),
       datum: (
-        signers: ("Signer A", "Signer B", "Signer C"),
+        signers: (`Signer A`, `Signer B`, `Signer C`),
         threshold: 2,
-        spending_limit: 500000,
-        transaction_limit_value: (ada: 1000000),
+        spending_limit: `500000`,
+        transaction_limit_value: (ada: `1000000`),
       ),
       // redeemer: "Update",
     ),
@@ -667,10 +665,10 @@ updates the required signers threshold.
         Multisig_NFT: 1,
       ),
       datum: (
-        signers: ("Signer A", "Signer B", "Signer D"), // Updated signers list
+        signers: (`Signer A`, `Signer B`, `Signer D`), // Updated signers list
         threshold: 3,
-        spending_limit: 500000,
-        transaction_limit_value: (ada: 1000000),
+        spending_limit: `500000`,
+        transaction_limit_value: (ada: `1000000`),
       ),
     ),
   ),
