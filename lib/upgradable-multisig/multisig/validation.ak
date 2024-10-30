@@ -7,7 +7,7 @@ use assist/data
 use assist/values
 use upgradable_multisig/multisig/utils.{
   get_asset_amount, signed_within_threshold, validate_multisig_datum,
-  validate_token_output,
+  validate_nft_output,
 }
 use upgradable_multisig/types.{MultisigDatum}
 
@@ -43,7 +43,7 @@ pub fn validate_initiate_multisig(
 
   // Ensure token output goes back to the script
   let multisig_token_to_script =
-    validate_token_output(
+    validate_nft_output(
       own_output,
       own_policy,
       sig_tkn_name,

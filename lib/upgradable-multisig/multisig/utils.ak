@@ -20,7 +20,7 @@ pub fn get_input_by_token(
 pub fn validate_multisig_datum(datum: MultisigDatum) -> Bool {
   let signers_nr = list.length(datum.signers)
 
-  (signers_nr > 0)? && (datum.threshold > 0)? && (datum.spending_limit > 2_000_000)?
+  (signers_nr > 0)? && !(signers_nr <= datum.threshold)? && (datum.threshold > 0)? && (datum.spending_limit > 2_000_000)?
 }
 
 // Helper function to get the amount of a specific asset from a Value
@@ -29,7 +29,7 @@ pub fn get_asset_amount(value: Value, asset: AssetClass) -> Int {
 }
 
 // Helper function to validate where the NFT goes
-pub fn validate_token_output(
+pub fn validate_nft_output(
   output: Output,
   policy: PolicyId,
   token_name: ByteArray,
