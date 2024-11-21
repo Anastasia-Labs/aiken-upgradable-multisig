@@ -8,8 +8,7 @@ use aiken_design_patterns/singular_utxo_indexer as singular_utxo_indexer
 use assist/data
 use assist/values
 use upgradable_multisig/multisig/utils.{
-  get_asset_amount, output_assets_valid, signed_within_threshold,
-  validate_multisig_datum,
+  signed_within_threshold, validate_multisig_datum,
 }
 use upgradable_multisig/types.{MultisigDatum}
 
@@ -23,14 +22,9 @@ pub fn validate_initiate_multisig(
   expect Some(own_input) = list.at(tx.inputs, input_index)
   expect [own_output, ..] = tx.outputs
 
-  let multisig_credential = credential.ScriptCredential(own_policy)
   // Ensure this outref is spent in this transaction
-  let is_outref_spent = own_input.output_reference == output_reference
+  expect (own_input.output_reference == output_reference)?
 
-  // Extract datums
-  expect multisig_datum: MultisigDatum = data.output_datum(own_output)
-
-  // Check if the managed asset is ADA
   // Create a unique token name
   let sig_tkn_name =
     values.unique_token_name(
@@ -41,18 +35,25 @@ pub fn validate_initiate_multisig(
   // Construct one Multisig token value 
   let multisig_value = value.from_asset(own_policy, sig_tkn_name, 1)
 
-  let payment_credential = own_output.address.payment_credential
+  // Extract and validate the datum from the output UTxO
+  expect multisig_datum: MultisigDatum = data.output_datum(own_output)
+  expect validate_multisig_datum(multisig_datum)?
+
+  let output_lovelace = value.lovelace_of(own_output.value)
+
+  // Verify that the output UTxO is sent to the correct script address
+  let multisig_credential = credential.ScriptCredential(own_policy)
+
+  // expect (own_output.address.payment_credential == multisig_credential)?
   and {
-    is_outref_spent?,
-    output_assets_valid(
-      own_input.output,
-      own_output,
-      multisig_datum,
-      own_policy,
-      sig_tkn_name,
-    )?,
-    (payment_credential == multisig_credential)?,
+    // Verify that the correct token was minted
     (multisig_value == minted_tokens)?,
+    // Verify that the output UTxO contains the multisig NFT
+    (value.quantity_of(own_output.value, own_policy, sig_tkn_name) == 1)?,
+    // Ensure that the output UTxO contains enough Lovelaces
+    (output_lovelace >= multisig_datum.minimum_ada)?,
+    // Verify that the output UTxO is sent to the correct script address
+    (own_output.address.payment_credential == multisig_credential)?,
   }
 }
 
@@ -107,31 +108,49 @@ pub fn validate_sign(
 
       expect [(policy_id, asset_name, 1)] = value.flatten(multisig_nft)
 
-      let input_amount = get_asset_amount(own_input.value, datum.funds)
-      let output_amount = get_asset_amount(own_output.value, datum.funds)
-      let withdraw_amount = input_amount - output_amount
       expect output_datum: MultisigDatum = data.output_datum(own_output)
       let valid_multisig_datum = validate_multisig_datum(output_datum)
 
       let multisig_credential = credential.ScriptCredential(policy_id)
-      let payment_credential = own_output.address.payment_credential
 
+      let input_lovelace = value.lovelace_of(own_input.value)
+      let output_lovelace = value.lovelace_of(own_output.value)
+      let output_value_flat = value.flatten(own_output.value)
+      let withdraw_amount = input_lovelace - output_lovelace
+
+      let is_ada =
+        datum.funds.policy_id == value.ada_policy_id && datum.funds.asset_name == value.ada_asset_name
+
+      // Perform validations based on asset type
+      let assets_valid =
+        when is_ada is {
+          True -> {
+            expect list.length(output_value_flat) == 2
+            expect input_lovelace >= output_lovelace
+            // Ensure Lovelace amounts match expected transfer
+            expect output_lovelace >= datum.minimum_ada
+            True
+          }
+          False -> {
+            expect list.length(output_value_flat) <= 3
+            let input_payment =
+              value.quantity_of(own_input.value, policy_id, asset_name)
+            let output_payment =
+              value.quantity_of(own_output.value, policy_id, asset_name)
+            expect input_payment >= output_payment
+            True
+          }
+        }
       and {
         // Validate presence of multisig NFT in the input
-        output_assets_valid(
-          own_input,
-          own_output,
-          output_datum,
-          policy_id,
-          asset_name,
-        )?,
-        (payment_credential == multisig_credential)?,
         valid_multisig_datum?,
         signed_within_threshold(datum, tx.extra_signatories)?,
+        assets_valid?,
         // Check if the transfer adheres to the spending rules
         (withdraw_amount <= datum.spending_limit)?,
         // Validate that the datum is updated correctly
         (datum == output_datum)?,
+        (own_output.address.payment_credential == multisig_credential)?,
       }
     },
     (input_index, output_index),
@@ -154,30 +173,19 @@ pub fn validate_update(
         own_input.value
           |> value.without_lovelace()
 
-      expect [(policy_id, asset_name, 1)] = value.flatten(multisig_nft)
-      // Validate that the output datum is updated correctly
+      expect [(policy_id, _, 1)] = value.flatten(multisig_nft)
+      // Extract and validate that the output datum is updated correctly
       expect output_datum: MultisigDatum = data.output_datum(own_output)
-      // Ensure the new signers list is not empty
-      let new_signer_count = list.length(output_datum.signers)
       let valid_multisig_datum = validate_multisig_datum(output_datum)
 
       let multisig_credential = credential.ScriptCredential(policy_id)
-      let payment_credential = own_output.address.payment_credential
 
-      // Perform various checks on the new datum
       and {
         valid_multisig_datum?,
         signed_within_threshold(datum, tx.extra_signatories)?,
-        (list.length(list.unique(output_datum.signers)) == new_signer_count)?,
         (own_output.value == own_input.value)?,
-        output_assets_valid(
-          own_input,
-          own_output,
-          output_datum,
-          policy_id,
-          asset_name,
-        )?,
-        (payment_credential == multisig_credential)?,
+        // Verify that the output UTxO is sent back to the script address
+        (own_output.address.payment_credential == multisig_credential)?,
       }
     },
     (input_index, output_index),
