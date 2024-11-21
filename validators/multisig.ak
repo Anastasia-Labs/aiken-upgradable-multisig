@@ -1,14 +1,13 @@
 use aiken/transaction.{Mint, ScriptContext}
 use upgradable_multisig/multisig/validation.{
-  validate_initiate_multisig, validate_multisig_end, validate_sign,
-  validate_update,
+  validate_initiate_multisig, validate_multisig_end, validate_remove,
+  validate_sign, validate_update,
 }
 use upgradable_multisig/types.{
-  EndMultiSig, InitMultiSig, MintMultisig, MultisigDatum, MultisigRedeemer, Sign,
-  Update,
+  EndMultiSig, InitMultiSig, MintMultisig, MultisigDatum, MultisigRedeemer,
+  Remove, Sign, Update,
 }
 
-// TODO: Consult Mark/ Jonathan on the assumption of a single authentic utxo's viability
 // Main validator function for the upgradable multisig contract
 validator {
   fn multisig_policy(r: MintMultisig, ctx: ScriptContext) -> Bool {
@@ -16,17 +15,16 @@ validator {
     expect Mint(own_policy) = purpose
 
     when r is {
-      InitMultiSig { output_reference, input_index, output_index } ->
+      InitMultiSig { output_reference, input_index } ->
         validate_initiate_multisig(
           own_policy,
           output_reference,
           input_index,
-          output_index,
           tx,
-        )?
+        )
 
-      EndMultiSig { datum, input_index } ->
-        validate_multisig_end(datum, own_policy, input_index, tx)
+      EndMultiSig { input_index } ->
+        validate_multisig_end(own_policy, input_index, tx)
     }
   }
 
@@ -40,6 +38,8 @@ validator {
         validate_sign(d, input_index, output_index, ctx)
       Update { input_index, output_index } ->
         validate_update(d, input_index, output_index, ctx)
+      Remove { input_index, output_index } ->
+        validate_remove(d, input_index, output_index, ctx)
     }
   }
 }

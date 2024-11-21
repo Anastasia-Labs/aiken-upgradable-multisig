@@ -8,7 +8,8 @@ use aiken/transaction.{
 use aiken/transaction/value
 use assist/values
 use upgradable_multisig/multisig/validation.{
-  validate_initiate_multisig, validate_sign, validate_update,
+  validate_initiate_multisig, validate_multisig_end, validate_remove,
+  validate_sign, validate_update,
 }
 use upgradable_multisig/tests/tests
 
@@ -23,8 +24,7 @@ test succeed_initiate_multisig() {
   // Create input and output UTxOs
   let transaction_limit_value = 1_000_000_000
 
-  let min_value = 2_000_000
-  let output_value = 100_000_000_000
+  let contract_value = 100_000_000_000
 
   let pubkey_hash_01 = tests.test_224_02()
   let pubkey_hash_02 = tests.test_224_03()
@@ -36,26 +36,27 @@ test succeed_initiate_multisig() {
 
   let threshold = list.length(signatories) / 2 + 1
 
-  let multisig_value =
-    value.add(
-      value.from_lovelace(output_value),
-      own_policy,
-      multisig_token_name,
-      1,
-    )
   let user_input =
     tests.test_context_input_01(
       init_output_ref,
       own_policy,
-      value.from_lovelace(min_value),
+      value.from_lovelace(contract_value),
       NoDatum,
     )
+
+  let multisig_out_value =
+    value.add(value.zero(), own_policy, multisig_token_name, 1)
 
   let output_datum =
     tests.test_multisig_datum(signatories, threshold, transaction_limit_value)
 
   let multisig_output =
-    tests.test_utxo_02(own_policy, multisig_value, output_datum)
+    tests.test_utxo_02(
+      own_policy,
+      multisig_out_value,
+      contract_value,
+      output_datum,
+    )
 
   let context =
     ScriptContext {
@@ -65,11 +66,11 @@ test succeed_initiate_multisig() {
         reference_inputs: [],
         outputs: [multisig_output],
         fee: value.zero(),
-        mint: value.to_minted_value(multisig_value),
+        mint: value.to_minted_value(multisig_out_value),
         certificates: [],
         withdrawals: [],
         validity_range: interval.everything(),
-        extra_signatories: [],
+        extra_signatories: signatories,
         redeemers: [],
         datums: dict.new(),
         id: TransactionId { hash: tx_hash },
@@ -79,7 +80,6 @@ test succeed_initiate_multisig() {
   validate_initiate_multisig(
     own_policy,
     init_output_ref,
-    0,
     0,
     context.transaction,
   )
@@ -111,12 +111,7 @@ test succeed_end_multisig() {
   let datum =
     tests.test_multisig_datum(signatories, threshold, transaction_limit_value)
   let multisig_value =
-    value.add(
-      value.from_lovelace(output_value),
-      own_policy,
-      multisig_token_name,
-      1,
-    )
+    value.add(value.zero(), own_policy, multisig_token_name, 1)
   let multisig_input =
     tests.test_context_input_01(
       init_output_ref,
@@ -125,7 +120,10 @@ test succeed_end_multisig() {
       datum,
     )
 
-  let multisig_output = tests.test_utxo_02(own_policy, multisig_value, datum)
+  let multisig_out_value =
+    value.add(value.zero(), own_policy, multisig_token_name, -1)
+  let multisig_output =
+    tests.test_utxo_02(own_policy, multisig_out_value, output_value, datum)
 
   let context =
     ScriptContext {
@@ -135,24 +133,18 @@ test succeed_end_multisig() {
         reference_inputs: [],
         outputs: [multisig_output],
         fee: value.zero(),
-        mint: value.to_minted_value(multisig_value),
+        mint: value.to_minted_value(multisig_out_value),
         certificates: [],
         withdrawals: [],
         validity_range: interval.everything(),
-        extra_signatories: [],
+        extra_signatories: signatories,
         redeemers: [],
         datums: dict.new(),
         id: TransactionId { hash: tx_hash },
       },
     }
 
-  validate_initiate_multisig(
-    own_policy,
-    init_output_ref,
-    0,
-    0,
-    context.transaction,
-  )
+  validate_multisig_end(own_policy, 0, context.transaction)
 }
 
 test success_sign() {
@@ -203,14 +195,14 @@ test success_sign() {
   let output_datum =
     tests.test_multisig_datum(signatories, threshold, transaction_limit_value)
   let multisig_out_value =
-    value.add(
-      value.from_lovelace(output_value),
-      own_policy,
-      multisig_token_name,
-      1,
-    )
+    value.add(value.zero(), own_policy, multisig_token_name, 1)
   let own_output =
-    tests.test_utxo_02(own_policy, multisig_out_value, output_datum)
+    tests.test_utxo_02(
+      own_policy,
+      multisig_out_value,
+      output_value,
+      output_datum,
+    )
   let recipient_output =
     tests.test_user_utxo(
       tests.test_withdraw_pkh(),
@@ -309,14 +301,14 @@ test reject_insufficient_signatures() {
   let output_datum =
     tests.test_multisig_datum(signatories, threshold, transaction_limit_value)
   let multisig_out_value =
-    value.add(
-      value.from_lovelace(output_value),
-      own_policy,
-      multisig_token_name,
-      1,
-    )
+    value.add(value.zero(), own_policy, multisig_token_name, 1)
   let own_output =
-    tests.test_utxo_02(own_policy, multisig_out_value, output_datum)
+    tests.test_utxo_02(
+      own_policy,
+      multisig_out_value,
+      output_value,
+      output_datum,
+    )
   let recipient_output =
     tests.test_user_utxo(
       tests.test_withdraw_pkh(),
@@ -410,13 +402,14 @@ test success_adjust_threshold() {
     )
 
   let multisig_out_value =
-    value.add(
-      value.from_lovelace(contract_value),
+    value.add(value.zero(), own_policy, multisig_token_name, 1)
+  let own_output =
+    tests.test_utxo_02(
       own_policy,
-      multisig_token_name,
-      1,
+      multisig_out_value,
+      contract_value,
+      new_datum,
     )
-  let own_output = tests.test_utxo_02(own_policy, multisig_out_value, new_datum)
 
   // Create the transaction context
   let context =
@@ -507,14 +500,15 @@ test success_add_signer() {
     )
 
   let multisig_out_value =
-    value.add(
-      value.from_lovelace(contract_value),
-      own_policy,
-      multisig_token_name,
-      1,
-    )
+    value.add(value.zero(), own_policy, multisig_token_name, 1)
 
-  let own_output = tests.test_utxo_02(own_policy, multisig_out_value, new_datum)
+  let own_output =
+    tests.test_utxo_02(
+      own_policy,
+      multisig_out_value,
+      contract_value,
+      new_datum,
+    )
 
   // Create the transaction context
   let context =
@@ -602,13 +596,14 @@ test success_remove_signer() {
     )
 
   let multisig_out_value =
-    value.add(
-      value.from_lovelace(contract_value),
+    value.add(value.zero(), own_policy, multisig_token_name, 1)
+  let own_output =
+    tests.test_utxo_02(
       own_policy,
-      multisig_token_name,
-      1,
+      multisig_out_value,
+      contract_value,
+      new_datum,
     )
-  let own_output = tests.test_utxo_02(own_policy, multisig_out_value, new_datum)
 
   // Create the transaction context
   let context =
@@ -648,4 +643,77 @@ test success_remove_signer() {
   trace @"Result: Signer successfully removed and threshold adjusted"
 
   validate_update(old_datum, 0, 0, context)
+}
+
+test succeed_remove_miltisig() {
+  let own_policy = tests.test_policy()
+  let tx_hash = tests.test_224_01()
+  let init_output_ref = tests.test_input_utxo_02(tx_hash)
+
+  // Create input and output UTxOs
+  let transaction_limit_value = 1_000_000_000
+
+  // 100,000 ADA
+  let contract_value = 100_000_000_000
+  let pubkey_hash_01 = tests.test_224_02()
+  let pubkey_hash_02 = tests.test_224_03()
+  let pubkey_hash_03 = tests.test_224_04()
+  let pubkey_hash_04 = tests.test_224_05()
+
+  let signatories =
+    [pubkey_hash_01, pubkey_hash_02, pubkey_hash_03, pubkey_hash_04]
+
+  let threshold = list.length(signatories) / 2 + 1
+
+  let datum =
+    tests.test_multisig_datum(signatories, threshold, transaction_limit_value)
+  let multisig_token_name = values.unique_token_name(tx_hash, 1, #"")
+
+  let multisig_value =
+    value.add(
+      value.from_lovelace(contract_value),
+      own_policy,
+      multisig_token_name,
+      1,
+    )
+  let multisig_input =
+    tests.test_context_input_01(
+      init_output_ref,
+      own_policy,
+      multisig_value,
+      datum,
+    )
+
+  let multisig_out_value =
+    value.add(value.zero(), own_policy, multisig_token_name, -1)
+
+  let own_output =
+    tests.test_utxo_02(
+      own_policy,
+      value.from_lovelace(2_000_000),
+      contract_value,
+      NoDatum,
+    )
+
+  let context =
+    ScriptContext {
+      purpose: Spend(init_output_ref),
+      transaction: Transaction {
+        inputs: [multisig_input],
+        // Should have two inputs.
+        reference_inputs: [],
+        outputs: [own_output],
+        fee: value.zero(),
+        mint: value.to_minted_value(multisig_out_value),
+        certificates: [],
+        withdrawals: [],
+        validity_range: interval.everything(),
+        extra_signatories: [],
+        redeemers: [],
+        datums: dict.new(),
+        id: TransactionId { hash: tx_hash },
+      },
+    }
+
+  validate_remove(datum, 0, 0, context)
 }

@@ -1,6 +1,5 @@
 use aiken/list
 use aiken/transaction.{Input, Output}
-use aiken/transaction/credential.{Credential}
 use aiken/transaction/value.{PolicyId, Value}
 use upgradable_multisig/types.{AssetClass, MultisigDatum, PubKeyHash}
 
@@ -19,8 +18,7 @@ pub fn get_input_by_token(
 
 pub fn validate_multisig_datum(datum: MultisigDatum) -> Bool {
   let signers_nr = list.length(datum.signers)
-
-  (signers_nr > 0)? && !(signers_nr <= datum.threshold)? && (datum.threshold > 0)? && (datum.spending_limit > 2_000_000)?
+  (signers_nr >= datum.threshold)? && (datum.threshold > 0)? && (datum.spending_limit > 2_000_000)?
 }
 
 // Helper function to get the amount of a specific asset from a Value
@@ -28,18 +26,40 @@ pub fn get_asset_amount(value: Value, asset: AssetClass) -> Int {
   value.quantity_of(value, asset.policy_id, asset.asset_name)
 }
 
-// Helper function to validate where the NFT goes
-pub fn validate_nft_output(
+pub fn output_assets_valid(
+  out_input: Output,
   output: Output,
-  policy: PolicyId,
+  datum: MultisigDatum,
+  policy_id: PolicyId,
   token_name: ByteArray,
-  credential: Credential,
 ) -> Bool {
-  // is_credential: Bool,
-  let token_quantity = value.quantity_of(output.value, policy, token_name)
-  let payment_credential = output.address.payment_credential
+  let input_lovelace = value.lovelace_of(out_input.value)
+  let output_lovelace = value.lovelace_of(output.value)
+  let output_value_flat = value.flatten(output.value)
 
-  token_quantity == 1 && payment_credential == credential
+  let is_ada =
+    datum.funds.policy_id == value.ada_policy_id && datum.funds.asset_name == value.ada_asset_name
+
+  let assets_valid =
+    when is_ada is {
+      True -> {
+        expect list.length(output_value_flat) == 2
+        expect input_lovelace >= output_lovelace
+        // Ensure Lovelace amounts match expected transfer
+        expect output_lovelace > datum.minimum_ada
+        True
+      }
+      False -> {
+        expect list.length(output_value_flat) <= 3
+        let input_payment =
+          value.quantity_of(out_input.value, policy_id, token_name)
+        let output_payment =
+          value.quantity_of(output.value, policy_id, token_name)
+        expect input_payment == output_payment
+        True
+      }
+    }
+  assets_valid
 }
 
 fn has_enough_signers(

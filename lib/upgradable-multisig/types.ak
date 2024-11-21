@@ -15,18 +15,16 @@ pub type MultisigDatum {
   threshold: Int,
   funds: AssetClass,
   spending_limit: Int,
+  minimum_ada: Int,
 }
 
 pub type MultisigRedeemer {
   Sign { input_index: Int, output_index: Int }
   Update { input_index: Int, output_index: Int }
+  Remove { input_index: Int, output_index: Int }
 }
 
 pub type MintMultisig {
-  InitMultiSig {
-    output_reference: OutputReference,
-    input_index: Int,
-    output_index: Int,
-  }
-  EndMultiSig { datum: MultisigDatum, input_index: Int }
+  InitMultiSig { output_reference: OutputReference, input_index: Int }
+  EndMultiSig { input_index: Int }
 }

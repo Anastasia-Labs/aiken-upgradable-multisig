@@ -6,7 +6,7 @@
 #let image-foreground = image("../images/Logo-Anastasia-Labs-V-Color02.png", width: 100%, fit: "contain")
 #let image-header = image("../images/Logo-Anastasia-Labs-V-Color01.png", height: 75%, fit: "contain")
 #let milestones-link = link("https://milestones.projectcatalyst.io/projects/1100025/milestones/1")[Catalyst Proposal]
-#let git-link = link(" https://github.com/Anastasia-Labs/aiken-upgradable-multisig")[Aiken Upgradable Multisig Github Repo]
+#let git-link = link("https://github.com/Anastasia-Labs/aiken-upgradable-multisig")[Aiken Upgradable Multisig Github Repo]
 #let test_success_sign_link = link("https://github.com/Anastasia-Labs/aiken-upgradable-multisig/blob/0c059228852bed70ed45a5e8c327b6753925d972/validators/multisig.ak#L121C1-L152C18")[test success_sign code]
 #let reject_insufficient_signatures_link = link("https://github.com/Anastasia-Labs/aiken-upgradable-multisig/blob/0c059228852bed70ed45a5e8c327b6753925d972/validators/multisig.ak#L220")[test reject_insufficient_signatures code]
 #let success_adjust_threshold_link = link("https://github.com/Anastasia-Labs/aiken-upgradable-multisig/blob/0c059228852bed70ed45a5e8c327b6753925d972/validators/multisig.ak#L317")[test success_adjust_threshold code]
@@ -105,7 +105,7 @@
     ]
     #v(-6mm)
     #align(right)[
-      #counter(page).display( "1/1",both: true)]
+      #context counter(page).display( "1/1",both: true)]
   ] 
 )
 
