@@ -60,7 +60,7 @@ The multisig_validator is the core component of the contract, responsible for:
 
 1. **`has_enough_signers:`** Determines if the transaction has been signed by enough authorized signers to meet the threshold.
 
-2. **`get_input_by_token:`** Retrieves the input UTxO that contains a specific token, such as the Multisig NFT.
+<!-- 2. **`get_input_by_token:`** Retrieves the input UTxO that contains a specific token, such as the Multisig NFT. -->
 
 3. **`validate_nft_output:`** Validates that the Multisig NFT is correctly handled in the transaction outputs, ensuring it remains at the script address during contract operations.
 
