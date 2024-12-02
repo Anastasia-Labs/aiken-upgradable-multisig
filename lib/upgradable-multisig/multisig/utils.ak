@@ -1,6 +1,9 @@
-use aiken/list
-use aiken/transaction.{Input, Output}
-use aiken/transaction/value.{PolicyId, Value}
+use aiken/collection/list
+use cardano/assets.{
+  PolicyId, Value, ada_asset_name, ada_policy_id, flatten, lovelace_of,
+  quantity_of,
+}
+use cardano/transaction.{Input, Output}
 use upgradable_multisig/types.{AssetClass, MultisigDatum, PubKeyHash}
 
 pub fn get_input_by_token(
@@ -10,9 +13,7 @@ pub fn get_input_by_token(
 ) -> Option<Input> {
   list.find(
     inputs,
-    fn(input) {
-      value.quantity_of(input.output.value, policy_id, token_name) > 0
-    },
+    fn(input) { quantity_of(input.output.value, policy_id, token_name) > 0 },
   )
 }
 
@@ -23,7 +24,7 @@ pub fn validate_multisig_datum(datum: MultisigDatum) -> Bool {
 
 // Helper function to get the amount of a specific asset from a Value
 pub fn get_asset_amount(value: Value, asset: AssetClass) -> Int {
-  value.quantity_of(value, asset.policy_id, asset.asset_name)
+  quantity_of(value, asset.policy_id, asset.asset_name)
 }
 
 pub fn output_assets_valid(
@@ -33,12 +34,12 @@ pub fn output_assets_valid(
   policy_id: PolicyId,
   token_name: ByteArray,
 ) -> Bool {
-  let input_lovelace = value.lovelace_of(out_input.value)
-  let output_lovelace = value.lovelace_of(output.value)
-  let output_value_flat = value.flatten(output.value)
+  let input_lovelace = lovelace_of(out_input.value)
+  let output_lovelace = lovelace_of(output.value)
+  let output_value_flat = flatten(output.value)
 
   let is_ada =
-    datum.funds.policy_id == value.ada_policy_id && datum.funds.asset_name == value.ada_asset_name
+    datum.funds.policy_id == ada_policy_id && datum.funds.asset_name == ada_asset_name
 
   let assets_valid =
     when is_ada is {
@@ -51,10 +52,8 @@ pub fn output_assets_valid(
       }
       False -> {
         expect list.length(output_value_flat) <= 3
-        let input_payment =
-          value.quantity_of(out_input.value, policy_id, token_name)
-        let output_payment =
-          value.quantity_of(output.value, policy_id, token_name)
+        let input_payment = quantity_of(out_input.value, policy_id, token_name)
+        let output_payment = quantity_of(output.value, policy_id, token_name)
         expect input_payment == output_payment
         True
       }

@@ -186,7 +186,7 @@ The Multi-sig Contract is the primary contract responsible for managing the list
 ===== Redeemer
 \
 
-```typ
+```t
   pub type MintMultisig {
     InitMultiSig {
       output_reference: OutputReference,
@@ -237,7 +237,7 @@ The contract uses the Spend purpose, allowing it to handle spending operations s
 \
 The multisig datum structure holds the current state of the multisig arrangement:
 
-```typ
+```t
 
   pub type MultisigDatum {
     signers: List<PubKeyHash>,
@@ -262,7 +262,7 @@ The multisig datum structure holds the current state of the multisig arrangement
 The contract supports two types of operations, represented by the redeemer:
 \
 
-```typ
+```t
 
   pub type MultisigRedeemer {
     Sign { input_index: Int, output_index: Int }
@@ -630,8 +630,8 @@ This transaction ensures that the number of signers meets or exceeds the specifi
 #pagebreak()
 #v(50pt)
 \
-=== Spend :: Update
-  \
+== Spend :: Update
+\
 
 Allows for the addition or removal of members from the Multisig arrangement, and
 updates the required signers threshold.

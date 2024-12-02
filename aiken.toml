@@ -1,7 +1,7 @@
 name = "anastasialabs/upgradable-multisig"
-version = "0.0.0"
-compiler = "v1.0.29-alpha"
-plutus = "v2"
+version = "0.0.1"
+compiler = "v1.1.7"
+plutus = "v3"
 license = "Apache-2.0"
 description = "Aiken contracts for project 'anastasialabs/upgradable-multisig'"
 
@@ -12,15 +12,22 @@ platform = "github"
 
 [[dependencies]]
 name = "aiken-lang/stdlib"
-version = "1.9.0"
-source = "github"
-
-[[dependencies]]
-name = "logicalmechanism/assist"
-version = "v0.4.10"
+version = "2.1.0"
 source = "github"
 
 [[dependencies]]
 name = "anastasia-labs/aiken-design-patterns"
-version = "8e5c1f7"
+version = "38997fc"
 source = "github"
+
+[[dependencies]]
+name = "logical-mechanism/assist"
+version = "v0.5.1"
+source = "github"
+
+[[dependencies]]
+name = "aiken-lang/fuzz"
+version = "v2"
+source = "github"
+
+[config]

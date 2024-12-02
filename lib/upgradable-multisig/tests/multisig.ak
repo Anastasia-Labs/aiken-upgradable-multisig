@@ -1,17 +1,17 @@
 use aiken/cbor
-use aiken/dict
+use aiken/collection/dict
+use aiken/collection/list
 use aiken/interval
-use aiken/list
-use aiken/transaction.{
-  Input, Mint, NoDatum, ScriptContext, Spend, Transaction, TransactionId,
-}
-use aiken/transaction/value
-use assist/values
+use cardano/assets.{add, from_lovelace, zero}
+use cardano/script_context.{Minting, ScriptContext, Spending}
+use cardano/transaction.{NoDatum, Transaction}
+use cardano/value
 use upgradable_multisig/multisig/validation.{
   validate_initiate_multisig, validate_multisig_end, validate_remove,
   validate_sign, validate_update,
 }
 use upgradable_multisig/tests/tests
+use upgradable_multisig/types.{EndMultiSig, InitMultiSig, Remove, Sign, Update}
 
 test succeed_initiate_multisig() {
   let own_policy = tests.test_policy()
@@ -19,7 +19,15 @@ test succeed_initiate_multisig() {
 
   let init_output_ref = tests.test_input_utxo_02(tx_hash)
 
-  let multisig_token_name = values.unique_token_name(tx_hash, 1, #"")
+  let personal_tag = "MultisigNFT"
+
+  let multisig_token_name =
+    value.unique_token_name(
+      init_output_ref.transaction_id,
+      init_output_ref.output_index,
+      #"",
+      personal_tag,
+    )
 
   // Create input and output UTxOs
   let transaction_limit_value = 1_000_000_000
@@ -40,12 +48,11 @@ test succeed_initiate_multisig() {
     tests.test_context_input_01(
       init_output_ref,
       own_policy,
-      value.from_lovelace(contract_value),
+      from_lovelace(contract_value),
       NoDatum,
     )
 
-  let multisig_out_value =
-    value.add(value.zero(), own_policy, multisig_token_name, 1)
+  let multisig_out_value = add(zero, own_policy, multisig_token_name, 1)
 
   let output_datum =
     tests.test_multisig_datum(signatories, threshold, transaction_limit_value)
@@ -60,21 +67,30 @@ test succeed_initiate_multisig() {
 
   let context =
     ScriptContext {
-      purpose: Mint(own_policy),
       transaction: Transaction {
         inputs: [user_input],
         reference_inputs: [],
         outputs: [multisig_output],
-        fee: value.zero(),
-        mint: value.to_minted_value(multisig_out_value),
+        fee: 0,
+        mint: multisig_out_value,
         certificates: [],
         withdrawals: [],
-        validity_range: interval.everything(),
+        validity_range: interval.everything,
         extra_signatories: signatories,
         redeemers: [],
-        datums: dict.new(),
-        id: TransactionId { hash: tx_hash },
+        datums: dict.empty,
+        id: tx_hash,
+        votes: [],
+        proposal_procedures: [],
+        current_treasury_amount: None,
+        treasury_donation: None,
       },
+      redeemer: InitMultiSig {
+        output_reference: init_output_ref,
+        input_index: 0,
+      },
+      // Added the missing 'redeemer' field
+      info: Minting(own_policy),
     }
 
   validate_initiate_multisig(
@@ -91,7 +107,7 @@ test succeed_end_multisig() {
 
   let init_output_ref = tests.test_input_utxo_02(tx_hash)
 
-  let multisig_token_name = values.unique_token_name(tx_hash, 1, #"")
+  let multisig_token_name = value.unique_token_name(tx_hash, 1, #"", "")
 
   // Create input and output UTxOs
   let transaction_limit_value = 1_000_000_000
@@ -110,8 +126,7 @@ test succeed_end_multisig() {
 
   let datum =
     tests.test_multisig_datum(signatories, threshold, transaction_limit_value)
-  let multisig_value =
-    value.add(value.zero(), own_policy, multisig_token_name, 1)
+  let multisig_value = add(zero, own_policy, multisig_token_name, 1)
   let multisig_input =
     tests.test_context_input_01(
       init_output_ref,
@@ -120,28 +135,33 @@ test succeed_end_multisig() {
       datum,
     )
 
-  let multisig_out_value =
-    value.add(value.zero(), own_policy, multisig_token_name, -1)
+  let multisig_out_value = add(zero, own_policy, multisig_token_name, -1)
   let multisig_output =
     tests.test_utxo_02(own_policy, multisig_out_value, output_value, datum)
 
   let context =
     ScriptContext {
-      purpose: Mint(own_policy),
       transaction: Transaction {
         inputs: [multisig_input],
         reference_inputs: [],
         outputs: [multisig_output],
-        fee: value.zero(),
-        mint: value.to_minted_value(multisig_out_value),
+        fee: 0,
+        mint: multisig_out_value,
         certificates: [],
         withdrawals: [],
-        validity_range: interval.everything(),
+        validity_range: interval.everything,
         extra_signatories: signatories,
         redeemers: [],
-        datums: dict.new(),
-        id: TransactionId { hash: tx_hash },
+        datums: dict.empty,
+        id: tx_hash,
+        votes: [],
+        proposal_procedures: [],
+        current_treasury_amount: None,
+        treasury_donation: None,
       },
+      redeemer: EndMultiSig { input_index: 0 },
+      // Added the missing 'redeemer' field
+      info: Minting(own_policy),
     }
 
   validate_multisig_end(own_policy, 0, context.transaction)
@@ -175,15 +195,10 @@ test success_sign() {
 
   let datum =
     tests.test_multisig_datum(signatories, threshold, transaction_limit_value)
-  let multisig_token_name = values.unique_token_name(tx_hash, 1, #"")
+  let multisig_token_name = value.unique_token_name(tx_hash, 1, #"", "")
 
   let multisig_value =
-    value.add(
-      value.from_lovelace(contract_value),
-      own_policy,
-      multisig_token_name,
-      1,
-    )
+    add(from_lovelace(contract_value), own_policy, multisig_token_name, 1)
   let multisig_input =
     tests.test_context_input_01(
       init_output_ref,
@@ -194,8 +209,7 @@ test success_sign() {
 
   let output_datum =
     tests.test_multisig_datum(signatories, threshold, transaction_limit_value)
-  let multisig_out_value =
-    value.add(value.zero(), own_policy, multisig_token_name, 1)
+  let multisig_out_value = add(zero, own_policy, multisig_token_name, 1)
   let own_output =
     tests.test_utxo_02(
       own_policy,
@@ -206,28 +220,36 @@ test success_sign() {
   let recipient_output =
     tests.test_user_utxo(
       tests.test_withdraw_pkh(),
-      value.from_lovelace(withdrawal_value),
+      from_lovelace(withdrawal_value),
       NoDatum,
     )
+  let as_data: Data = datum
 
   // Create the transaction context
   let context =
     ScriptContext {
-      purpose: Spend(multisig_input.output_reference),
+      // purpose: Spend(multisig_input.output_reference),
       transaction: Transaction {
         inputs: [multisig_input],
         reference_inputs: [],
         outputs: [own_output, recipient_output],
-        fee: value.zero(),
-        mint: value.to_minted_value(value.zero()),
+        fee: 0,
+        mint: zero,
         certificates: [],
         withdrawals: [],
-        validity_range: interval.everything(),
+        validity_range: interval.everything,
         extra_signatories: signatories,
         redeemers: [],
-        datums: dict.new(),
-        id: TransactionId { hash: tx_hash },
+        datums: dict.empty,
+        id: tx_hash,
+        votes: [],
+        proposal_procedures: [],
+        current_treasury_amount: None,
+        treasury_donation: None,
       },
+      redeemer: Sign { input_index: 0, output_index: 0 },
+      // Added the missing 'redeemer' field
+      info: Spending(init_output_ref, Some(as_data)),
     }
 
   trace @"Test: Successful Transaction Signing"
@@ -250,7 +272,7 @@ test success_sign() {
   trace @"Result: Transaction successfully signed and executed!"
 
   // Call the validator function
-  validate_sign(datum, 0, 0, context)
+  validate_sign(Some(datum), Pair(0, 0), init_output_ref, context.transaction)
 }
 
 test reject_insufficient_signatures() {
@@ -281,15 +303,10 @@ test reject_insufficient_signatures() {
 
   let datum =
     tests.test_multisig_datum(signatories, threshold, transaction_limit_value)
-  let multisig_token_name = values.unique_token_name(tx_hash, 1, #"")
+  let multisig_token_name = value.unique_token_name(tx_hash, 1, #"", "")
 
   let multisig_value =
-    value.add(
-      value.from_lovelace(contract_value),
-      own_policy,
-      multisig_token_name,
-      1,
-    )
+    add(from_lovelace(contract_value), own_policy, multisig_token_name, 1)
   let multisig_input =
     tests.test_context_input_01(
       init_output_ref,
@@ -300,8 +317,7 @@ test reject_insufficient_signatures() {
 
   let output_datum =
     tests.test_multisig_datum(signatories, threshold, transaction_limit_value)
-  let multisig_out_value =
-    value.add(value.zero(), own_policy, multisig_token_name, 1)
+  let multisig_out_value = add(zero, own_policy, multisig_token_name, 1)
   let own_output =
     tests.test_utxo_02(
       own_policy,
@@ -312,28 +328,36 @@ test reject_insufficient_signatures() {
   let recipient_output =
     tests.test_user_utxo(
       tests.test_withdraw_pkh(),
-      value.from_lovelace(withdrawal_value),
+      from_lovelace(withdrawal_value),
       NoDatum,
     )
+  let as_data: Data = datum
 
   // Create the transaction context
   let context =
     ScriptContext {
-      purpose: Spend(multisig_input.output_reference),
+      // purpose: Spend(multisig_input.output_reference),
       transaction: Transaction {
         inputs: [multisig_input],
         reference_inputs: [],
         outputs: [own_output, recipient_output],
-        fee: value.zero(),
-        mint: value.to_minted_value(value.zero()),
+        fee: 0,
+        mint: zero,
         certificates: [],
         withdrawals: [],
-        validity_range: interval.everything(),
+        validity_range: interval.everything,
         extra_signatories: [pubkey_hash_01, pubkey_hash_02],
         redeemers: [],
-        datums: dict.new(),
-        id: TransactionId { hash: tx_hash },
+        datums: dict.empty,
+        id: tx_hash,
+        votes: [],
+        proposal_procedures: [],
+        current_treasury_amount: None,
+        treasury_donation: None,
       },
+      redeemer: Sign { input_index: 0, output_index: 0 },
+      // Added the missing 'redeemer' field
+      info: Spending(init_output_ref, Some(as_data)),
     }
 
   trace @"Test: Rejecting Transaction with Insufficient Signatures"
@@ -354,7 +378,7 @@ test reject_insufficient_signatures() {
   trace @"Result: Transaction rejected due to insufficient signatures!"
 
   // Call the validator function
-  !validate_sign(datum, 0, 0, context)
+  !validate_sign(Some(datum), Pair(0, 0), init_output_ref, context.transaction)
 }
 
 test success_adjust_threshold() {
@@ -384,15 +408,10 @@ test success_adjust_threshold() {
   let new_datum =
     tests.test_multisig_datum(signatories, new_threshold, spending_limit)
 
-  let multisig_token_name = values.unique_token_name(tx_hash, 1, #"")
+  let multisig_token_name = value.unique_token_name(tx_hash, 1, #"", "")
 
   let multisig_value =
-    value.add(
-      value.from_lovelace(contract_value),
-      own_policy,
-      multisig_token_name,
-      1,
-    )
+    add(from_lovelace(contract_value), own_policy, multisig_token_name, 1)
   let multisig_input =
     tests.test_context_input_01(
       init_output_ref,
@@ -401,8 +420,7 @@ test success_adjust_threshold() {
       old_datum,
     )
 
-  let multisig_out_value =
-    value.add(value.zero(), own_policy, multisig_token_name, 1)
+  let multisig_out_value = add(zero, own_policy, multisig_token_name, 1)
   let own_output =
     tests.test_utxo_02(
       own_policy,
@@ -411,24 +429,32 @@ test success_adjust_threshold() {
       new_datum,
     )
 
+  let as_data: Data = old_datum
   // Create the transaction context
   let context =
     ScriptContext {
-      purpose: Spend(multisig_input.output_reference),
+      // purpose: Spend(multisig_input.output_reference),
       transaction: Transaction {
         inputs: [multisig_input],
         reference_inputs: [],
         outputs: [own_output],
-        fee: value.zero(),
-        mint: value.to_minted_value(value.zero()),
+        fee: 0,
+        mint: zero,
         certificates: [],
         withdrawals: [],
-        validity_range: interval.everything(),
+        validity_range: interval.everything,
         extra_signatories: signatories,
         redeemers: [],
-        datums: dict.new(),
-        id: TransactionId { hash: tx_hash },
+        datums: dict.empty,
+        id: tx_hash,
+        votes: [],
+        proposal_procedures: [],
+        current_treasury_amount: None,
+        treasury_donation: None,
       },
+      redeemer: Update { input_index: 0, output_index: 0 },
+      // Added the missing 'redeemer' field
+      info: Spending(init_output_ref, Some(as_data)),
     }
 
   trace @"Test: Successfully Adjusting Signature Threshold"
@@ -437,16 +463,21 @@ test success_adjust_threshold() {
   trace @"Total number of signatories in the multisig"
   trace cbor.diagnostic(list.length(signatories))
   trace @"Current contract value (in lovelace)"
-  trace cbor.diagnostic(value.from_lovelace(contract_value))
+  trace cbor.diagnostic(from_lovelace(contract_value))
   trace @"New threshold value"
   trace cbor.diagnostic(new_threshold)
   trace @"Number of signatories approving this change"
   trace cbor.diagnostic(list.length(signatories))
   trace @"Contract value after threshold adjustment (should be unchanged)"
-  trace cbor.diagnostic(value.from_lovelace(contract_value))
+  trace cbor.diagnostic(from_lovelace(contract_value))
   trace @"Result: Signature threshold successfully updated!"
   // Call the validator function
-  validate_update(old_datum, 0, 0, context)
+  validate_update(
+    Some(old_datum),
+    Pair(0, 0),
+    init_output_ref,
+    context.transaction,
+  )
 }
 
 test success_add_signer() {
@@ -468,10 +499,7 @@ test success_add_signer() {
     [pubkey_hash_01, pubkey_hash_02, pubkey_hash_03, pubkey_hash_04]
   let new_signatories =
     [
-      pubkey_hash_01,
-      pubkey_hash_02,
-      pubkey_hash_03,
-      pubkey_hash_04,
+      pubkey_hash_01, pubkey_hash_02, pubkey_hash_03, pubkey_hash_04,
       new_pubkey_hash,
     ]
 
@@ -482,15 +510,10 @@ test success_add_signer() {
     tests.test_multisig_datum(old_signatories, threshold, spending_limit)
   let new_datum =
     tests.test_multisig_datum(new_signatories, threshold, spending_limit)
-  let multisig_token_name = values.unique_token_name(tx_hash, 1, #"")
+  let multisig_token_name = value.unique_token_name(tx_hash, 1, #"", "")
 
   let multisig_value =
-    value.add(
-      value.from_lovelace(contract_value),
-      own_policy,
-      multisig_token_name,
-      1,
-    )
+    add(from_lovelace(contract_value), own_policy, multisig_token_name, 1)
   let multisig_input =
     tests.test_context_input_01(
       init_output_ref,
@@ -499,8 +522,7 @@ test success_add_signer() {
       old_datum,
     )
 
-  let multisig_out_value =
-    value.add(value.zero(), own_policy, multisig_token_name, 1)
+  let multisig_out_value = add(zero, own_policy, multisig_token_name, 1)
 
   let own_output =
     tests.test_utxo_02(
@@ -510,24 +532,32 @@ test success_add_signer() {
       new_datum,
     )
 
+  let as_data: Data = old_datum
   // Create the transaction context
   let context =
     ScriptContext {
-      purpose: Spend(multisig_input.output_reference),
+      // purpose: Spend(multisig_input.output_reference),
       transaction: Transaction {
         inputs: [multisig_input],
         reference_inputs: [],
         outputs: [own_output],
-        fee: value.zero(),
-        mint: value.to_minted_value(value.zero()),
+        fee: 0,
+        mint: zero,
         certificates: [],
         withdrawals: [],
-        validity_range: interval.everything(),
+        validity_range: interval.everything,
         extra_signatories: old_signatories,
         redeemers: [],
-        datums: dict.new(),
-        id: TransactionId { hash: tx_hash },
+        datums: dict.empty,
+        id: tx_hash,
+        votes: [],
+        proposal_procedures: [],
+        current_treasury_amount: None,
+        treasury_donation: None,
       },
+      redeemer: Update { input_index: 0, output_index: 0 },
+      // Added the missing 'redeemer' field
+      info: Spending(init_output_ref, Some(as_data)),
     }
 
   trace @"Test: Successfully Adding a New Signer to the Multisig Contract"
@@ -547,7 +577,12 @@ test success_add_signer() {
   trace cbor.diagnostic(contract_value)
   trace @"Result: New signer successfully added to the multisig!"
 
-  validate_update(old_datum, 0, 0, context)
+  validate_update(
+    Some(old_datum),
+    Pair(0, 0),
+    init_output_ref,
+    context.transaction,
+  )
 }
 
 test success_remove_signer() {
@@ -566,8 +601,7 @@ test success_remove_signer() {
 
   let old_signatories =
     [pubkey_hash_01, pubkey_hash_02, pubkey_hash_03, pubkey_hash_04]
-  let new_signatories =
-    [pubkey_hash_01, pubkey_hash_02, pubkey_hash_03]
+  let new_signatories = [pubkey_hash_01, pubkey_hash_02, pubkey_hash_03]
 
   let old_threshold = 3
   let new_threshold = 2
@@ -578,15 +612,10 @@ test success_remove_signer() {
     tests.test_multisig_datum(old_signatories, old_threshold, spending_limit)
   let new_datum =
     tests.test_multisig_datum(new_signatories, new_threshold, spending_limit)
-  let multisig_token_name = values.unique_token_name(tx_hash, 1, #"")
+  let multisig_token_name = value.unique_token_name(tx_hash, 1, #"", "")
 
   let multisig_value =
-    value.add(
-      value.from_lovelace(contract_value),
-      own_policy,
-      multisig_token_name,
-      1,
-    )
+    add(from_lovelace(contract_value), own_policy, multisig_token_name, 1)
   let multisig_input =
     tests.test_context_input_01(
       init_output_ref,
@@ -595,8 +624,7 @@ test success_remove_signer() {
       old_datum,
     )
 
-  let multisig_out_value =
-    value.add(value.zero(), own_policy, multisig_token_name, 1)
+  let multisig_out_value = add(zero, own_policy, multisig_token_name, 1)
   let own_output =
     tests.test_utxo_02(
       own_policy,
@@ -605,24 +633,33 @@ test success_remove_signer() {
       new_datum,
     )
 
+  let as_data: Data = old_datum
+
   // Create the transaction context
   let context =
     ScriptContext {
-      purpose: Spend(multisig_input.output_reference),
+      // purpose: Spend(multisig_input.output_reference),
       transaction: Transaction {
         inputs: [multisig_input],
         reference_inputs: [],
         outputs: [own_output],
-        fee: value.zero(),
-        mint: value.to_minted_value(value.zero()),
+        fee: 0,
+        mint: zero,
         certificates: [],
         withdrawals: [],
-        validity_range: interval.everything(),
+        validity_range: interval.everything,
         extra_signatories: old_signatories,
         redeemers: [],
-        datums: dict.new(),
-        id: TransactionId { hash: tx_hash },
+        datums: dict.empty,
+        id: tx_hash,
+        votes: [],
+        proposal_procedures: [],
+        current_treasury_amount: None,
+        treasury_donation: None,
       },
+      redeemer: Update { input_index: 0, output_index: 0 },
+      // Added the missing 'redeemer' field
+      info: Spending(init_output_ref, Some(as_data)),
     }
 
   trace @"Test: Successfully Removing a Signer from the Multisig Contract"
@@ -642,7 +679,12 @@ test success_remove_signer() {
   trace cbor.diagnostic(contract_value)
   trace @"Result: Signer successfully removed and threshold adjusted"
 
-  validate_update(old_datum, 0, 0, context)
+  validate_update(
+    Some(old_datum),
+    Pair(0, 0),
+    init_output_ref,
+    context.transaction,
+  )
 }
 
 test succeed_remove_miltisig() {
@@ -667,15 +709,10 @@ test succeed_remove_miltisig() {
 
   let datum =
     tests.test_multisig_datum(signatories, threshold, transaction_limit_value)
-  let multisig_token_name = values.unique_token_name(tx_hash, 1, #"")
+  let multisig_token_name = value.unique_token_name(tx_hash, 1, #"", "")
 
   let multisig_value =
-    value.add(
-      value.from_lovelace(contract_value),
-      own_policy,
-      multisig_token_name,
-      1,
-    )
+    add(from_lovelace(contract_value), own_policy, multisig_token_name, 1)
   let multisig_input =
     tests.test_context_input_01(
       init_output_ref,
@@ -684,36 +721,44 @@ test succeed_remove_miltisig() {
       datum,
     )
 
-  let multisig_out_value =
-    value.add(value.zero(), own_policy, multisig_token_name, -1)
+  let multisig_out_value = add(zero, own_policy, multisig_token_name, -1)
 
   let own_output =
     tests.test_utxo_02(
       own_policy,
-      value.from_lovelace(2_000_000),
+      from_lovelace(2_000_000),
       contract_value,
       NoDatum,
     )
+  let as_data: Data = datum
 
   let context =
     ScriptContext {
-      purpose: Spend(init_output_ref),
+      // purpose: Spend(init_output_ref),
       transaction: Transaction {
         inputs: [multisig_input],
         // Should have two inputs.
         reference_inputs: [],
         outputs: [own_output],
-        fee: value.zero(),
-        mint: value.to_minted_value(multisig_out_value),
+        fee: 0,
+        mint: multisig_out_value,
         certificates: [],
         withdrawals: [],
-        validity_range: interval.everything(),
+        validity_range: interval.everything,
         extra_signatories: [],
         redeemers: [],
-        datums: dict.new(),
-        id: TransactionId { hash: tx_hash },
+        datums: dict.empty,
+        id: tx_hash,
+        votes: [],
+        proposal_procedures: [],
+        current_treasury_amount: None,
+        treasury_donation: None,
       },
+      redeemer: Remove { input_index: 0, output_index: 0 },
+      // Added the missing 'redeemer' field
+      info: Spending(init_output_ref, Some(as_data)),
     }
 
-  validate_remove(datum, 0, 0, context)
+  validate_remove(Some(datum), Pair(0, 0), init_output_ref, context.transaction)
+  // validate_remove(datum, 0, 0, context)
 }
