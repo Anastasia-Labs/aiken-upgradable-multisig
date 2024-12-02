@@ -228,7 +228,6 @@ test success_sign() {
   // Create the transaction context
   let context =
     ScriptContext {
-      // purpose: Spend(multisig_input.output_reference),
       transaction: Transaction {
         inputs: [multisig_input],
         reference_inputs: [],
@@ -336,7 +335,6 @@ test reject_insufficient_signatures() {
   // Create the transaction context
   let context =
     ScriptContext {
-      // purpose: Spend(multisig_input.output_reference),
       transaction: Transaction {
         inputs: [multisig_input],
         reference_inputs: [],
@@ -433,7 +431,6 @@ test success_adjust_threshold() {
   // Create the transaction context
   let context =
     ScriptContext {
-      // purpose: Spend(multisig_input.output_reference),
       transaction: Transaction {
         inputs: [multisig_input],
         reference_inputs: [],
@@ -536,7 +533,6 @@ test success_add_signer() {
   // Create the transaction context
   let context =
     ScriptContext {
-      // purpose: Spend(multisig_input.output_reference),
       transaction: Transaction {
         inputs: [multisig_input],
         reference_inputs: [],
@@ -638,7 +634,6 @@ test success_remove_signer() {
   // Create the transaction context
   let context =
     ScriptContext {
-      // purpose: Spend(multisig_input.output_reference),
       transaction: Transaction {
         inputs: [multisig_input],
         reference_inputs: [],
@@ -734,7 +729,6 @@ test succeed_remove_miltisig() {
 
   let context =
     ScriptContext {
-      // purpose: Spend(init_output_ref),
       transaction: Transaction {
         inputs: [multisig_input],
         // Should have two inputs.
@@ -760,5 +754,4 @@ test succeed_remove_miltisig() {
     }
 
   validate_remove(Some(datum), Pair(0, 0), init_output_ref, context.transaction)
-  // validate_remove(datum, 0, 0, context)
 }

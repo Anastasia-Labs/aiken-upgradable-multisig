@@ -1,4 +1,3 @@
-use aiken/cbor
 use aiken/collection/list
 use aiken_design_patterns/singular_utxo_indexer as singular_utxo_indexer
 use cardano/address.{Script}
@@ -21,12 +20,9 @@ pub fn validate_initiate_multisig(
   input_index: Int,
   tx: Transaction,
 ) -> Bool {
-  // let minted_tokens = tx.mint |> assets.from_asset
-
   expect Some(in_utxo) = list.at(tx.inputs, input_index)
   expect Some(out_utxo) = list.at(tx.outputs, output_reference.output_index)
 
-  // expect [out_utxo, ..] = tx.outputs
   // Ensure this outref is spent in this transaction
   expect (in_utxo.output_reference == output_reference)?
 
@@ -54,10 +50,6 @@ pub fn validate_initiate_multisig(
   // Verify that the output UTxO is sent to the correct script address
   let multisig_credential = Script(own_policy)
 
-  trace @"multisig_value"
-  trace cbor.diagnostic(multisig_value)
-  trace @"tx.mint"
-  trace cbor.diagnostic(tx.mint)
   and {
     // Verify that the correct token was minted
     (multisig_value == tx.mint)?,

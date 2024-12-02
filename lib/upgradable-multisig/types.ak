@@ -1,5 +1,4 @@
 use aiken/crypto.{Blake2b_224, Hash, VerificationKey}
-// use aiken/transaction/credential.{VerificationKey}
 use cardano/transaction.{OutputReference}
 
 pub type PubKeyHash =

@@ -14,12 +14,10 @@ pub fn test_224_01() {
   bytearray.take(blake2b_256(#"01"), 28)
 }
 
-// Generate a bytearray with blake2b_256
 pub fn test_224_02() {
   bytearray.take(blake2b_256(#"02"), 28)
 }
 
-// Generate a bytearray with blake2b_256
 pub fn test_224_03() {
   bytearray.take(blake2b_256(#"03"), 28)
 }
@@ -36,7 +34,6 @@ pub fn test_224_06() {
   bytearray.take(blake2b_256(#"06"), 28)
 }
 
-// Generate a bytearray with blake2b_256
 pub fn test_policy() {
   bytearray.take(blake2b_256(#"07"), 28)
 }
@@ -126,7 +123,6 @@ pub fn test_spend_script_context(
   tx_hash: ByteArray,
 ) {
   ScriptContext {
-    // purpose: Spend(output_ref),
     transaction: Transaction {
       inputs: main_inputs,
       reference_inputs: ref_inputs,
