@@ -1,4 +1,5 @@
-use aiken/transaction.{Mint, ScriptContext}
+use cardano/assets.{PolicyId}
+use cardano/transaction.{OutputReference, Transaction}
 use upgradable_multisig/multisig/validation.{
   validate_initiate_multisig, validate_multisig_end, validate_remove,
   validate_sign, validate_update,
@@ -9,37 +10,39 @@ use upgradable_multisig/types.{
 }
 
 // Main validator function for the upgradable multisig contract
-validator {
-  fn multisig_policy(r: MintMultisig, ctx: ScriptContext) -> Bool {
-    let ScriptContext { transaction: tx, purpose } = ctx
-    expect Mint(own_policy) = purpose
-
+validator multisig {
+  mint(r: MintMultisig, policy_id: PolicyId, self: Transaction) {
     when r is {
       InitMultiSig { output_reference, input_index } ->
         validate_initiate_multisig(
-          own_policy,
+          policy_id,
           output_reference,
           input_index,
-          tx,
+          self,
         )
 
       EndMultiSig { input_index } ->
-        validate_multisig_end(own_policy, input_index, tx)
+        validate_multisig_end(policy_id, input_index, self)
     }
   }
 
-  fn multisig_validator(
-    d: MultisigDatum,
+  spend(
+    d: Option<MultisigDatum>,
     r: MultisigRedeemer,
-    ctx: ScriptContext,
-  ) -> Bool {
+    own_ref: OutputReference,
+    self: Transaction,
+  ) {
     when r is {
       Sign { input_index, output_index } ->
-        validate_sign(d, input_index, output_index, ctx)
+        validate_sign(d, Pair(input_index, output_index), own_ref, self)
       Update { input_index, output_index } ->
-        validate_update(d, input_index, output_index, ctx)
+        validate_update(d, Pair(input_index, output_index), own_ref, self)
       Remove { input_index, output_index } ->
-        validate_remove(d, input_index, output_index, ctx)
+        validate_remove(d, Pair(input_index, output_index), own_ref, self)
     }
+  }
+
+  else(_) {
+    fail
   }
 }
