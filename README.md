@@ -2,15 +2,17 @@
 
 ## Overview
 
-This multi-signature contract is designed for secure transactions on blockchain
-platforms, requiring multiple signatures to authorize a transaction. It enables
-you to:
+The Upgradable Multi-Signature Contract is designed for secure and collaborative management of funds on the Cardano blockchain. It allows multiple authorized signers to collectively authorize transactions, ensuring that funds can only be moved with the required approvals. Key features include:
 
-- Set up a multi-signature wallet with a list of authorized signatories.
-- Define a threshold for the number of signatures required to approve
-  transactions.
-- Update the list of signatories and threshold as needed.
-- Enforce spending limits for transactions.
+- **Multi-Signature Wallet Setup:** Establish a multi-signature wallet with a customizable list of authorized signers.
+
+- **Flexible Thresholds:** Define a threshold for the minimum number of signatures required to approve transactions.
+
+- **Signer Management:** Update the list of signers and the signature threshold as needed, allowing for the addition or removal of signers.
+
+- **Spending Limits Enforcement:** Set and enforce spending limits for transactions to prevent unauthorized or excessive withdrawals.
+
+- **Unique Contract Identification:** Utilize a unique Multisig NFT to ensure the integrity and uniqueness of the contract's state and prevent replay attacks.
 
 ## Design Documentation
 
@@ -18,40 +20,49 @@ For a comprehensive understanding of the contract's architecture, design
 decisions, and implementation details, please refer to the
 [Design Documentation](/docs/design-specs/upgradable-multi-sig.pdf). This
 documentation provides in-depth insights into the contract's design, including
-its components, and detailed explanations of its functionality.
+its components, transaction flows, the role of the Multisig NFT and detailed explanations of all the functionalities.
 
 ## Contract Functionality
 
 ### Validator Function
 
-The `multisig_validator` function is responsible for:
+The multisig_validator is the core component of the contract, responsible for:
 
-1. **Validation of Signatures**: Checks if the number of valid signers meets or
-   exceeds the threshold required for the transaction.
-2. **Spending Limit Enforcement**: Ensures that the transaction adheres to the
-   spending limit specified in the contract.
-3. **Datum Validation**: Validates that the contract's datum is correctly
-   updated, if applicable.
+1. **Signature Validation:** Checks if the number of valid signatures meets or exceeds the required threshold for a transaction to be approved.
+
+2. **Spending Limit Enforcement:** Ensures that transactions adhere to the spending limits specified in the contract's configuration.
+3. **State Integrity with Multisig NFT:** Manages the Multisig NFT to maintain the uniqueness and integrity of the contract's UTXO (Unspent Transaction Output).
+4. **Datum Validation:** Validates that the contract's datum (state data) is correctly updated during transactions, preventing unauthorized changes.
+
+### Key Functions
+
+1. **`validate_init_multisig:`** Validates the initialization of the multisig contract, ensuring that the Multisig NFT is correctly minted and that the initial configuration is properly set.
+
+2. **`validate_end_multisig:`** Validates the termination of the multisig contract, confirming that the required signers have approved the termination and that the Multisig NFT is correctly burned.
+
+3. **`validate_sign:`** Validates transactions that involve spending funds from the multisig contract. It ensures:
+
+   - The transaction has the required number of valid signatures.
+
+   - The amount being transferred does not exceed the defined spending limit.
+   - The Multisig NFT remains at the script address, maintaining the contract's integrity.
+   - The contract's datum remains unchanged unless explicitly allowed.
+
+4. **`validate_update:`** Validates updates to the contract's configuration, such as changes to the list of signers or the signature threshold. It ensures:
+
+   - The update is authorized by the required number of signers.
+
+   - The new configuration adheres to the contract's rules (e.g., threshold is within valid bounds).
+   - There are no duplicate signers in the updated list.
+   - The Multisig NFT remains at the script address.
 
 ### Helper Functions
 
-1. **`get_asset_amount`**: Retrieves the amount of a specific asset from a
-   `Value`.
+1. **`has_enough_signers:`** Determines if the transaction has been signed by enough authorized signers to meet the threshold.
 
-2. **`validate_sign`**: This function ensures that a transaction with a `Sign`
-   redeemer is valid under the following conditions:
+2. **`get_input_by_token:`** Retrieves the input UTxO that contains a specific token, such as the Multisig NFT.
 
-   - The amount being transferred from the input to the output does not exceed
-     the spending limit defined in the contract.
-
-   - The datum associated with the output UTxO is consistent with the
-     expectations and rules defined in the contract.
-
-- **`datum_is_valid`**: Ensures that the datum has not been altered
-  inappropriately.
-
-- **`validate_update`**: Validates updates to the contract, including changes to
-  the list of signatories and the threshold.
+3. **`validate_nft_output:`** Validates that the Multisig NFT is correctly handled in the transaction outputs, ensuring it remains at the script address during contract operations.
 
 ## Getting Started
 
@@ -82,18 +93,22 @@ aiken build
 
 ## Testing
 
-Several test cases are provided to ensure the contract behaves as expected:
+Comprehensive test cases are provided to ensure the contract behaves as expected under various scenarios:
 
-1. **`success_sign`**: Tests a successful transaction signing scenario where the
+1. **`success_init_multisig:`** Tests the successful initialization of the multisig contract and minting of the Multisig NFT.
+
+2. **`success_sign`**: Tests a successful transaction signing scenario where the
    number of signatures meets the threshold.
-2. **`reject_insufficient_signatures`**: Tests the rejection of a transaction
+3. **`reject_insufficient_signatures`**: Tests the rejection of a transaction
    when insufficient signatures are provided.
-3. **`success_adjust_threshold`**: Tests the successful adjustment of the
+4. **`success_adjust_threshold`**: Tests the successful adjustment of the
    signature threshold.
-4. **`success_add_signer`**: Tests the successful addition of a new signer to
+5. **`success_add_signer`**: Tests the successful addition of a new signer to
    the contract.
-5. **`success_remove_signer`**: Tests the successful removal of a signer from
+6. **`success_remove_signer`**: Tests the successful removal of a signer from
    the contract.
+7. **`success_end_multisig:`** Tests the successful termination of the multisig contract and burning of the Multisig NFT.
+
 
 ### Running Tests
 

@@ -68,6 +68,7 @@ pub fn test_multisig_datum(signitories, signer_count, limit_qty) {
       asset_name: value.ada_asset_name,
     },
     spending_limit: limit_qty,
+    minimum_ada: 2_000_000,
   }
 }
 
@@ -101,13 +102,18 @@ pub fn test_context_input_02(output_ref, own_cs, minted_value, datum) {
 }
 
 // Create a UTxO
-pub fn test_utxo_02(own_cs, token_value, datum) {
+pub fn test_utxo_02(own_cs, minted_value, lovelace, datum) {
   Output {
     address: Address {
       payment_credential: ScriptCredential(own_cs),
       stake_credential: None,
     },
-    value: token_value,
+    value: value.add(
+      minted_value,
+      value.ada_policy_id,
+      value.ada_asset_name,
+      lovelace,
+    ),
     datum: InlineDatum(datum),
     reference_script: None,
   }
