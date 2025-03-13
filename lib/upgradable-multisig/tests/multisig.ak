@@ -1,8 +1,8 @@
 use aiken/collection/dict
 use aiken/collection/list
 use aiken/interval.{everything}
-use cardano/assets.{add, from_lovelace, zero}
-use cardano/transaction.{Input, NoDatum, Transaction}
+use cardano/assets.{ada_asset_name, ada_policy_id, add, from_lovelace, zero}
+use cardano/transaction.{InlineDatum, Input, NoDatum, Output, Transaction}
 use upgradable_multisig/multisig/utils.{multisig_token_name}
 use upgradable_multisig/multisig/validation.{
   validate_initiate_multisig, validate_multisig_end, validate_remove,
@@ -10,7 +10,7 @@ use upgradable_multisig/multisig/validation.{
 }
 use upgradable_multisig/tests/tests
 
-test succeed_initiate_multisig() {
+fn base_init() {
   let own_policy = tests.test_policy()
 
   // Create input and output UTxOs
@@ -41,6 +41,160 @@ test succeed_initiate_multisig() {
       output_datum,
     )
 
+  (own_policy, 0, multisig_out_value, multisig_output)
+}
+
+test succeed_initiate_multisig() {
+  let (own_policy, idx, multisig_out_value, multisig_output) = base_init()
+
+  validate_initiate_multisig(
+    own_policy,
+    idx,
+    multisig_out_value,
+    [multisig_output],
+  )
+}
+
+test fail_init_script_address() fail {
+  let (_own_policy, idx, multisig_out_value, multisig_output) = base_init()
+
+  let wrong_policy = tests.test_wrong_policy()
+
+  validate_initiate_multisig(
+    wrong_policy,
+    idx,
+    multisig_out_value,
+    [multisig_output],
+  )
+}
+
+test fail_init_threshold_too_large() fail {
+  let (own_policy, idx, multisig_out_value, multisig_output) = base_init()
+
+  let transaction_limit_value = 1_000_000_000
+
+  let pubkey_hash_01 = tests.test_224_02()
+  let pubkey_hash_02 = tests.test_224_03()
+  let pubkey_hash_03 = tests.test_224_04()
+  let pubkey_hash_04 = tests.test_224_05()
+  let signatories =
+    [pubkey_hash_01, pubkey_hash_02, pubkey_hash_03, pubkey_hash_04]
+
+  let threshold = list.length(signatories) + 1
+
+  let multisig_out_value = add(zero, own_policy, multisig_token_name, 1)
+
+  let output_datum =
+    tests.test_multisig_datum(signatories, threshold, transaction_limit_value)
+
+  let wrong_multisig_output =
+    Output { ..multisig_output, datum: InlineDatum(output_datum) }
+
+  validate_initiate_multisig(
+    own_policy,
+    0,
+    multisig_out_value,
+    [wrong_multisig_output],
+  )
+}
+
+test fail_init_threshold_too_small() fail {
+  let (own_policy, idx, multisig_out_value, multisig_output) = base_init()
+
+  let transaction_limit_value = 1_000_000_000
+
+  let pubkey_hash_01 = tests.test_224_02()
+  let pubkey_hash_02 = tests.test_224_03()
+  let pubkey_hash_03 = tests.test_224_04()
+  let pubkey_hash_04 = tests.test_224_05()
+  let signatories =
+    [pubkey_hash_01, pubkey_hash_02, pubkey_hash_03, pubkey_hash_04]
+
+  let threshold = 0
+
+  let multisig_out_value = add(zero, own_policy, multisig_token_name, 1)
+
+  let output_datum =
+    tests.test_multisig_datum(signatories, threshold, transaction_limit_value)
+
+  let wrong_multisig_output =
+    Output { ..multisig_output, datum: InlineDatum(output_datum) }
+
+  validate_initiate_multisig(
+    own_policy,
+    0,
+    multisig_out_value,
+    [wrong_multisig_output],
+  )
+}
+
+test fail_init_too_many_tokens() fail {
+  let contract_value = 100_000_000_000
+  let (own_policy, idx, multisig_out_value, multisig_output) = base_init()
+
+  let multisig_out_value = add(zero, own_policy, multisig_token_name, 2)
+
+  let wrong_multisig_output =
+    Output {
+      ..multisig_output,
+      value: add(
+        multisig_out_value,
+        ada_policy_id,
+        ada_asset_name,
+        contract_value,
+      ),
+    }
+
+  validate_initiate_multisig(
+    own_policy,
+    0,
+    multisig_out_value,
+    [multisig_output],
+  )
+}
+
+test fail_init_too_little_tokens() fail {
+  let contract_value = 100_000_000_000
+  let (own_policy, idx, multisig_out_value, multisig_output) = base_init()
+
+  let multisig_out_value = from_lovelace(contract_value)
+
+  let wrong_multisig_output =
+    Output {
+      ..multisig_output,
+      value: add(
+        multisig_out_value,
+        ada_policy_id,
+        ada_asset_name,
+        contract_value,
+      ),
+    }
+
+  validate_initiate_multisig(
+    own_policy,
+    0,
+    multisig_out_value,
+    [multisig_output],
+  )
+}
+
+test fail_init_wrong_token() fail {
+  let contract_value = 100_000_000_000
+  let (own_policy, idx, multisig_out_value, multisig_output) = base_init()
+
+  let multisig_out_value = add(zero, own_policy, "not_multisig_token_name", 1)
+
+  let wrong_multisig_output =
+    Output {
+      ..multisig_output,
+      value: add(
+        multisig_out_value,
+        ada_policy_id,
+        ada_asset_name,
+        contract_value,
+      ),
+    }
+
   validate_initiate_multisig(
     own_policy,
     0,
@@ -53,6 +207,22 @@ test succeed_end_multisig() {
   let own_policy = tests.test_policy()
 
   let multisig_out_value = add(zero, own_policy, multisig_token_name, -1)
+
+  validate_multisig_end(own_policy, multisig_out_value)
+}
+
+test fail_end_multisig_wrong_token() fail {
+  let own_policy = tests.test_policy()
+
+  let multisig_out_value = add(zero, own_policy, "not_multisig_token_name", -1)
+
+  validate_multisig_end(own_policy, multisig_out_value)
+}
+
+test fail_end_multisig_wrong_amount() fail {
+  let own_policy = tests.test_policy()
+
+  let multisig_out_value = add(zero, own_policy, multisig_token_name, -2)
 
   validate_multisig_end(own_policy, multisig_out_value)
 }

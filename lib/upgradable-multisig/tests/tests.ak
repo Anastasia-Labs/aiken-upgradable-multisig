@@ -40,8 +40,12 @@ pub fn test_policy() {
   bytearray.take(blake2b_256(#"07"), 28)
 }
 
-pub fn test_withdraw_pkh() {
+pub fn test_wrong_policy() {
   bytearray.take(blake2b_256(#"08"), 28)
+}
+
+pub fn test_withdraw_pkh() {
+  bytearray.take(blake2b_256(#"09"), 28)
 }
 
 pub fn test_input_utxo_01() {
