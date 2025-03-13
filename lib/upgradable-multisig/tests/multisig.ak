@@ -2,7 +2,7 @@ use aiken/collection/dict
 use aiken/collection/list
 use aiken/interval.{everything}
 use cardano/assets.{ada_asset_name, ada_policy_id, add, from_lovelace, zero}
-use cardano/transaction.{InlineDatum, Input, NoDatum, Output, Transaction}
+use cardano/transaction.{InlineDatum, NoDatum, Output, Transaction}
 use upgradable_multisig/multisig/utils.{multisig_token_name}
 use upgradable_multisig/multisig/validation.{
   validate_initiate_multisig, validate_multisig_end, validate_remove,
@@ -77,8 +77,6 @@ test fail_init_no_signatories() fail {
 
   let threshold = 1
 
-  let multisig_out_value = add(zero, own_policy, multisig_token_name, 1)
-
   let output_datum =
     tests.test_multisig_datum(signatories, threshold, transaction_limit_value)
 
@@ -87,7 +85,7 @@ test fail_init_no_signatories() fail {
 
   validate_initiate_multisig(
     own_policy,
-    0,
+    idx,
     multisig_out_value,
     [wrong_multisig_output],
   )
@@ -107,8 +105,6 @@ test fail_init_threshold_too_large() fail {
 
   let threshold = list.length(signatories) + 1
 
-  let multisig_out_value = add(zero, own_policy, multisig_token_name, 1)
-
   let output_datum =
     tests.test_multisig_datum(signatories, threshold, transaction_limit_value)
 
@@ -117,7 +113,7 @@ test fail_init_threshold_too_large() fail {
 
   validate_initiate_multisig(
     own_policy,
-    0,
+    idx,
     multisig_out_value,
     [wrong_multisig_output],
   )
@@ -137,8 +133,6 @@ test fail_init_threshold_too_small() fail {
 
   let threshold = 0
 
-  let multisig_out_value = add(zero, own_policy, multisig_token_name, 1)
-
   let output_datum =
     tests.test_multisig_datum(signatories, threshold, transaction_limit_value)
 
@@ -147,7 +141,7 @@ test fail_init_threshold_too_small() fail {
 
   validate_initiate_multisig(
     own_policy,
-    0,
+    idx,
     multisig_out_value,
     [wrong_multisig_output],
   )
@@ -155,7 +149,7 @@ test fail_init_threshold_too_small() fail {
 
 test fail_init_too_many_tokens() fail {
   let contract_value = 100_000_000_000
-  let (own_policy, idx, multisig_out_value, multisig_output) = base_init()
+  let (own_policy, idx, _old_multisig_out_value, multisig_output) = base_init()
 
   let multisig_out_value = add(zero, own_policy, multisig_token_name, 2)
 
@@ -172,15 +166,15 @@ test fail_init_too_many_tokens() fail {
 
   validate_initiate_multisig(
     own_policy,
-    0,
+    idx,
     multisig_out_value,
-    [multisig_output],
+    [wrong_multisig_output],
   )
 }
 
 test fail_init_too_little_tokens() fail {
   let contract_value = 100_000_000_000
-  let (own_policy, idx, multisig_out_value, multisig_output) = base_init()
+  let (own_policy, idx, _old_multisig_out_value, multisig_output) = base_init()
 
   let multisig_out_value = from_lovelace(contract_value)
 
@@ -197,15 +191,15 @@ test fail_init_too_little_tokens() fail {
 
   validate_initiate_multisig(
     own_policy,
-    0,
+    idx,
     multisig_out_value,
-    [multisig_output],
+    [wrong_multisig_output],
   )
 }
 
 test fail_init_wrong_token() fail {
   let contract_value = 100_000_000_000
-  let (own_policy, idx, multisig_out_value, multisig_output) = base_init()
+  let (own_policy, idx, _old_multisig_out_value, multisig_output) = base_init()
 
   let multisig_out_value = add(zero, own_policy, "not_multisig_token_name", 1)
 
@@ -222,9 +216,9 @@ test fail_init_wrong_token() fail {
 
   validate_initiate_multisig(
     own_policy,
-    0,
+    idx,
     multisig_out_value,
-    [multisig_output],
+    [wrong_multisig_output],
   )
 }
 
@@ -353,7 +347,7 @@ test fail_sign_insufficient_signatures() fail {
       extra_signatories: [pubkey_hash_01, pubkey_hash_02],
     }
 
-  validate_sign(datum, init_output_ref, 0, 0, wrong_transaction)
+  validate_sign(datum, init_output_ref, in_idx, out_idx, wrong_transaction)
 }
 
 test fail_sign_wrong_spend_limit() fail {
@@ -375,7 +369,7 @@ test fail_sign_wrong_spend_limit() fail {
     // Why it's not failing?
     Transaction { ..transaction, outputs: [own_output, recipient_output] }
 
-  validate_sign(datum, init_output_ref, 0, 0, wrong_transaction)
+  validate_sign(datum, init_output_ref, in_idx, out_idx, wrong_transaction)
 }
 
 test success_update_threshold() {
@@ -409,7 +403,13 @@ test success_update_threshold() {
   let transaction_new_output =
     Transaction { ..transaction, outputs: [own_output] }
 
-  validate_update(datum, init_output_ref, 0, 0, transaction_new_output)
+  validate_update(
+    datum,
+    init_output_ref,
+    in_idx,
+    out_idx,
+    transaction_new_output,
+  )
 }
 
 test success_update_add_signer() {
@@ -446,7 +446,13 @@ test success_update_add_signer() {
   let transaction_new_output =
     Transaction { ..transaction, outputs: [own_output] }
 
-  validate_update(datum, init_output_ref, 0, 0, transaction_new_output)
+  validate_update(
+    datum,
+    init_output_ref,
+    in_idx,
+    out_idx,
+    transaction_new_output,
+  )
 }
 
 test success_update_remove_signer() {
@@ -476,10 +482,16 @@ test success_update_remove_signer() {
   let transaction_new_output =
     Transaction { ..transaction, outputs: [own_output] }
 
-  validate_update(datum, init_output_ref, 0, 0, transaction_new_output)
+  validate_update(
+    datum,
+    init_output_ref,
+    in_idx,
+    out_idx,
+    transaction_new_output,
+  )
 }
 
-test success_update_remove_signers() {
+test success_update_remove_all_signers() {
   let (datum, init_output_ref, in_idx, out_idx, transaction) = base_sign()
 
   let own_policy = tests.test_policy()
@@ -505,7 +517,13 @@ test success_update_remove_signers() {
   let transaction_new_output =
     Transaction { ..transaction, outputs: [own_output] }
 
-  validate_update(datum, init_output_ref, 0, 0, transaction_new_output)
+  validate_update(
+    datum,
+    init_output_ref,
+    in_idx,
+    out_idx,
+    transaction_new_output,
+  )
 }
 
 test succeed_remove_miltisig() {
