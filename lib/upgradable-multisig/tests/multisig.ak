@@ -227,7 +227,7 @@ test fail_end_multisig_wrong_amount() fail {
   validate_multisig_end(own_policy, multisig_out_value)
 }
 
-test success_sign() {
+fn base_sign() {
   // Set up test data
   let own_policy = tests.test_policy()
   let tx_hash = tests.test_224_01()
@@ -238,6 +238,7 @@ test success_sign() {
 
   // 100,000 ADA
   let contract_value = 100_000_000_000
+
   // 99,000 ADA
   let output_value = 99_000_000_000
   // 1000 ADA
@@ -276,6 +277,7 @@ test success_sign() {
       output_value,
       output_datum,
     )
+
   let recipient_output =
     tests.test_user_utxo(
       tests.test_withdraw_pkh(),
@@ -304,89 +306,29 @@ test success_sign() {
       treasury_donation: None,
     }
 
-  // Call the validator function
-  validate_sign(datum, init_output_ref, 0, 0, transaction)
+  let in_idx = 0
+  let out_idx = 0
+
+  (datum, init_output_ref, in_idx, out_idx, transaction)
 }
 
-test reject_insufficient_signatures() {
-  // Set up test data
-  let own_policy = tests.test_policy()
-  let tx_hash = tests.test_224_01()
-  let init_output_ref = tests.test_input_utxo_02(tx_hash)
+test success_sign() {
+  let (datum, init_output_ref, in_idx, out_idx, transaction) = base_sign()
+  validate_sign(datum, init_output_ref, in_idx, out_idx, transaction)
+}
 
-  // Create input and output UTxOs
-  let transaction_limit_value = 1_000_000_000
-
-  // 100,000 ADA
-  let contract_value = 100_000_000_000
-  // 99,000 ADA
-  let output_value = 99_000_000_000
-  // 1000 ADA
-  let withdrawal_value = 1_000_000_000
+test fail_insufficient_signatures() fail {
+  let (datum, init_output_ref, in_idx, out_idx, transaction) = base_sign()
 
   let pubkey_hash_01 = tests.test_224_02()
   let pubkey_hash_02 = tests.test_224_03()
-
-  let pubkey_hash_03 = tests.test_224_04()
-  let pubkey_hash_04 = tests.test_224_05()
-  let signatories =
-    [pubkey_hash_01, pubkey_hash_02, pubkey_hash_03, pubkey_hash_04]
-
-  let threshold = list.length(signatories) / 2 + 1
-
-  let datum =
-    tests.test_multisig_datum(signatories, threshold, transaction_limit_value)
-
-  let multisig_value =
-    add(from_lovelace(contract_value), own_policy, multisig_token_name, 1)
-  let multisig_input =
-    tests.test_context_input_01(
-      init_output_ref,
-      own_policy,
-      multisig_value,
-      datum,
-    )
-
-  let output_datum =
-    tests.test_multisig_datum(signatories, threshold, transaction_limit_value)
-  let multisig_out_value = add(zero, own_policy, multisig_token_name, 1)
-  let own_output =
-    tests.test_utxo_02(
-      own_policy,
-      multisig_out_value,
-      output_value,
-      output_datum,
-    )
-  let recipient_output =
-    tests.test_user_utxo(
-      tests.test_withdraw_pkh(),
-      from_lovelace(withdrawal_value),
-      NoDatum,
-    )
-
-  // Create the transaction context
-  let transaction =
+  let wrong_transaction =
     Transaction {
-      inputs: [multisig_input],
-      reference_inputs: [],
-      outputs: [own_output, recipient_output],
-      fee: 0,
-      mint: zero,
-      certificates: [],
-      withdrawals: [],
-      validity_range: everything,
+      ..transaction,
       extra_signatories: [pubkey_hash_01, pubkey_hash_02],
-      redeemers: [],
-      datums: dict.empty,
-      id: tx_hash,
-      votes: [],
-      proposal_procedures: [],
-      current_treasury_amount: None,
-      treasury_donation: None,
-    }
+      }
 
-  // Call the validator function
-  !validate_sign(datum, multisig_input.output_reference, 0, 0, transaction)
+  validate_sign(datum, init_output_ref, 0, 0, wrong_transaction)
 }
 
 test success_adjust_threshold() {
