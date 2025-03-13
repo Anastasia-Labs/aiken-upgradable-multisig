@@ -68,6 +68,31 @@ test fail_init_script_address() fail {
   )
 }
 
+test fail_init_no_signatories() fail {
+  let (own_policy, idx, multisig_out_value, multisig_output) = base_init()
+
+  let transaction_limit_value = 1_000_000_000
+
+  let signatories = []
+
+  let threshold = 1
+
+  let multisig_out_value = add(zero, own_policy, multisig_token_name, 1)
+
+  let output_datum =
+    tests.test_multisig_datum(signatories, threshold, transaction_limit_value)
+
+  let wrong_multisig_output =
+    Output { ..multisig_output, datum: InlineDatum(output_datum) }
+
+  validate_initiate_multisig(
+    own_policy,
+    0,
+    multisig_out_value,
+    [wrong_multisig_output],
+  )
+}
+
 test fail_init_threshold_too_large() fail {
   let (own_policy, idx, multisig_out_value, multisig_output) = base_init()
 
@@ -326,7 +351,7 @@ test fail_sign_insufficient_signatures() fail {
     Transaction {
       ..transaction,
       extra_signatories: [pubkey_hash_01, pubkey_hash_02],
-      }
+    }
 
   validate_sign(datum, init_output_ref, 0, 0, wrong_transaction)
 }
@@ -337,12 +362,7 @@ test fail_sign_wrong_spend_limit() fail {
   let own_policy = tests.test_policy()
   let multisig_out_value = add(zero, own_policy, multisig_token_name, 1)
   let own_output =
-    tests.test_utxo_02(
-      own_policy,
-      multisig_out_value,
-      1_000_000_000_000,
-      datum,
-    )
+    tests.test_utxo_02(own_policy, multisig_out_value, 1_000_000_000_000, datum)
 
   let recipient_output =
     tests.test_user_utxo(
@@ -351,11 +371,9 @@ test fail_sign_wrong_spend_limit() fail {
       NoDatum,
     )
 
-  let wrong_transaction = // Why it's not failing?
-    Transaction {
-      ..transaction,
-      outputs: [own_output, recipient_output]
-      }
+  let wrong_transaction =
+    // Why it's not failing?
+    Transaction { ..transaction, outputs: [own_output, recipient_output] }
 
   validate_sign(datum, init_output_ref, 0, 0, wrong_transaction)
 }
@@ -372,7 +390,8 @@ test success_update_threshold() {
   let signatories =
     [pubkey_hash_01, pubkey_hash_02, pubkey_hash_03, pubkey_hash_04]
 
-  let new_threshold = 0 // Surprising that it's possible
+  let new_threshold = 0
+  // Surprising that it's possible
   let spending_limit = 1_000_000_000
   let contract_value = 100_000_000_000
 
@@ -388,10 +407,7 @@ test success_update_threshold() {
     )
 
   let transaction_new_output =
-    Transaction {
-      ..transaction,
-      outputs: [own_output]
-      }
+    Transaction { ..transaction, outputs: [own_output] }
 
   validate_update(datum, init_output_ref, 0, 0, transaction_new_output)
 }
@@ -407,7 +423,10 @@ test success_update_add_signer() {
   let pubkey_hash_04 = tests.test_224_05()
   let pubkey_hash_05 = tests.test_224_06()
   let signatories =
-    [pubkey_hash_01, pubkey_hash_02, pubkey_hash_03, pubkey_hash_04, pubkey_hash_05]
+    [
+      pubkey_hash_01, pubkey_hash_02, pubkey_hash_03, pubkey_hash_04,
+      pubkey_hash_05,
+    ]
 
   let new_threshold = 3
   let spending_limit = 1_000_000_000
@@ -425,10 +444,7 @@ test success_update_add_signer() {
     )
 
   let transaction_new_output =
-    Transaction {
-      ..transaction,
-      outputs: [own_output]
-      }
+    Transaction { ..transaction, outputs: [own_output] }
 
   validate_update(datum, init_output_ref, 0, 0, transaction_new_output)
 }
@@ -439,10 +455,10 @@ test success_update_remove_signer() {
   let own_policy = tests.test_policy()
 
   let pubkey_hash_01 = tests.test_224_02()
-  let signatories =
-    [pubkey_hash_01]
+  let signatories = [pubkey_hash_01]
 
-  let new_threshold = 3 // Lost the funds
+  let new_threshold = 3
+  // Lost the funds
   let spending_limit = 1_000_000_000
   let contract_value = 100_000_000_000
 
@@ -458,10 +474,7 @@ test success_update_remove_signer() {
     )
 
   let transaction_new_output =
-    Transaction {
-      ..transaction,
-      outputs: [own_output]
-      }
+    Transaction { ..transaction, outputs: [own_output] }
 
   validate_update(datum, init_output_ref, 0, 0, transaction_new_output)
 }
@@ -471,8 +484,9 @@ test success_update_remove_signers() {
 
   let own_policy = tests.test_policy()
 
-  let signatories = [] // That's possible as well?
+  let signatories = []
 
+  // That's possible as well?
   let new_threshold = 0
   let spending_limit = 1_000_000_000
   let contract_value = 100_000_000_000
@@ -489,15 +503,10 @@ test success_update_remove_signers() {
     )
 
   let transaction_new_output =
-    Transaction {
-      ..transaction,
-      outputs: [own_output]
-      }
+    Transaction { ..transaction, outputs: [own_output] }
 
   validate_update(datum, init_output_ref, 0, 0, transaction_new_output)
 }
-
-
 
 test succeed_remove_miltisig() {
   let own_policy = tests.test_policy()
