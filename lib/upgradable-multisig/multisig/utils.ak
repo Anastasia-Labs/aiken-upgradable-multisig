@@ -5,9 +5,6 @@ use cardano/assets.{AssetName, PolicyId, quantity_of}
 use cardano/transaction.{Input, Output, OutputReference, Transaction}
 use upgradable_multisig/types.{MultisigDatum, PubKeyHash}
 
-// TODO: Unique token names
-// pub const multisig_token_name = "multisig"
-
 pub fn get_input_by_token(
   inputs: List<Input>,
   policy_id: PolicyId,
@@ -19,7 +16,7 @@ pub fn get_input_by_token(
   )
 }
 
-//  TODO: Check all the signatures are correct (data == data)
+//  Check all the signatures are correct
 pub fn validate_multisig_datum(datum: MultisigDatum, tx: Transaction) -> Bool {
   let signers_nr = list.length(datum.signers)
   (signers_nr >= datum.threshold)? && (datum.threshold > 0)? && (tx.extra_signatories == datum.signers)?

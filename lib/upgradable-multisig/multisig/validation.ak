@@ -167,7 +167,7 @@ pub fn validate_update(
       let in_token_correct =
         (quantity_of(in_value, own_policy, multisig_token_name) == 1)? && (own_policy == multisig_policy)?
 
-      // TODO: Add without lovelace in check.
+      // Add without lovelace in check.
       let out_value_unchanged =
         assets.without_lovelace(out_value) == assets.without_lovelace(in_value)
 
