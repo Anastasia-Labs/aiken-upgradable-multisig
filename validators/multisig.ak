@@ -12,15 +12,16 @@ use upgradable_multisig/types.{
 validator multisig {
   mint(r: MintMultisig, own_policy: PolicyId, tx: Transaction) {
     when r is {
-      InitMultiSig { output_index } ->
+      InitMultiSig { output_reference, output_index } ->
         validate_initiate_multisig(
           own_policy,
+          output_reference,
           output_index,
-          tx.mint,
-          tx.outputs,
+          tx,
         )
 
-      EndMultiSig -> validate_multisig_end(own_policy, tx.mint)
+      EndMultiSig { input_index } ->
+        validate_multisig_end(own_policy, input_index, tx)
     }
   }
 

@@ -18,6 +18,8 @@ fn base_init() {
 
   let contract_value = 100_000_000_000
 
+  let tx_hash = tests.test_224_01()
+
   let pubkey_hash_01 = tests.test_224_02()
   let pubkey_hash_02 = tests.test_224_03()
   let pubkey_hash_03 = tests.test_224_04()
@@ -28,7 +30,17 @@ fn base_init() {
 
   let threshold = list.length(signatories) / 2 + 1
 
-  let multisig_out_value = add(zero, own_policy, multisig_token_name, 1)
+  let own_ref = tests.test_input_utxo_02(tx_hash)
+  let user_input =
+    tests.test_context_input_01(
+      own_ref,
+      own_policy,
+      assets.from_lovelace(contract_value),
+      NoDatum,
+    )
+
+  let multisig_out_value =
+    add(zero, own_policy, multisig_token_name(own_ref), 1)
 
   let output_datum =
     tests.test_multisig_datum(signatories, threshold, transaction_limit_value)
@@ -41,35 +53,51 @@ fn base_init() {
       output_datum,
     )
 
-  (own_policy, 0, multisig_out_value, multisig_output)
+  let transaction =
+    Transaction {
+      inputs: [user_input],
+      reference_inputs: [],
+      outputs: [multisig_output],
+      fee: 0,
+      mint: multisig_out_value,
+      certificates: [],
+      withdrawals: [],
+      validity_range: everything,
+      extra_signatories: signatories,
+      redeemers: [],
+      datums: dict.empty,
+      id: tx_hash,
+      votes: [],
+      proposal_procedures: [],
+      current_treasury_amount: None,
+      treasury_donation: None,
+    }
+
+  (own_policy, own_ref, 0, output_datum, multisig_output, transaction)
 }
 
 test succeed_init_multisig() {
-  let (own_policy, idx, multisig_out_value, multisig_output) = base_init()
+  let (own_policy, own_ref, idx, _output_datum, multisig_output, transaction) =
+    base_init()
 
-  validate_initiate_multisig(
-    own_policy,
-    idx,
-    multisig_out_value,
-    [multisig_output],
-  )
+  let tx = Transaction { ..transaction, outputs: [multisig_output] }
+
+  validate_initiate_multisig(own_policy, own_ref, idx, tx)
 }
 
 test fail_init_script_address() fail {
-  let (_own_policy, idx, multisig_out_value, multisig_output) = base_init()
+  let (_own_policy, own_ref, idx, _output_datum, multisig_output, transaction) =
+    base_init()
 
   let wrong_policy = tests.test_wrong_policy()
+  let tx = Transaction { ..transaction, outputs: [multisig_output] }
 
-  validate_initiate_multisig(
-    wrong_policy,
-    idx,
-    multisig_out_value,
-    [multisig_output],
-  )
+  validate_initiate_multisig(wrong_policy, own_ref, idx, tx)
 }
 
 test fail_init_no_signatories() fail {
-  let (own_policy, idx, multisig_out_value, multisig_output) = base_init()
+  let (own_policy, own_ref, idx, _output_datum, multisig_output, transaction) =
+    base_init()
 
   let transaction_limit_value = 1_000_000_000
 
@@ -83,16 +111,14 @@ test fail_init_no_signatories() fail {
   let wrong_multisig_output =
     Output { ..multisig_output, datum: InlineDatum(output_datum) }
 
-  validate_initiate_multisig(
-    own_policy,
-    idx,
-    multisig_out_value,
-    [wrong_multisig_output],
-  )
+  let tx = Transaction { ..transaction, outputs: [wrong_multisig_output] }
+
+  validate_initiate_multisig(own_policy, own_ref, idx, tx)
 }
 
 test fail_init_threshold_too_large() fail {
-  let (own_policy, idx, multisig_out_value, multisig_output) = base_init()
+  let (own_policy, own_ref, idx, _output_datum, multisig_output, transaction) =
+    base_init()
 
   let transaction_limit_value = 1_000_000_000
 
@@ -111,16 +137,14 @@ test fail_init_threshold_too_large() fail {
   let wrong_multisig_output =
     Output { ..multisig_output, datum: InlineDatum(output_datum) }
 
-  validate_initiate_multisig(
-    own_policy,
-    idx,
-    multisig_out_value,
-    [wrong_multisig_output],
-  )
+  let tx = Transaction { ..transaction, outputs: [wrong_multisig_output] }
+
+  validate_initiate_multisig(own_policy, own_ref, idx, tx)
 }
 
 test fail_init_threshold_too_small() fail {
-  let (own_policy, idx, multisig_out_value, multisig_output) = base_init()
+  let (own_policy, own_ref, idx, _output_datum, multisig_output, transaction) =
+    base_init()
 
   let transaction_limit_value = 1_000_000_000
 
@@ -139,19 +163,24 @@ test fail_init_threshold_too_small() fail {
   let wrong_multisig_output =
     Output { ..multisig_output, datum: InlineDatum(output_datum) }
 
-  validate_initiate_multisig(
-    own_policy,
-    idx,
-    multisig_out_value,
-    [wrong_multisig_output],
-  )
+  let tx = Transaction { ..transaction, outputs: [wrong_multisig_output] }
+
+  validate_initiate_multisig(own_policy, own_ref, idx, tx)
 }
 
 test fail_init_too_many_tokens() fail {
   let contract_value = 100_000_000_000
-  let (own_policy, idx, _old_multisig_out_value, multisig_output) = base_init()
+  let (
+    own_policy,
+    own_ref,
+    idx,
+    __oldoutput_datum,
+    multisig_output,
+    transaction,
+  ) = base_init()
 
-  let multisig_out_value = add(zero, own_policy, multisig_token_name, 2)
+  let multisig_out_value =
+    add(zero, own_policy, multisig_token_name(own_ref), 2)
 
   let wrong_multisig_output =
     Output {
@@ -164,17 +193,21 @@ test fail_init_too_many_tokens() fail {
       ),
     }
 
-  validate_initiate_multisig(
-    own_policy,
-    idx,
-    multisig_out_value,
-    [wrong_multisig_output],
-  )
+  let tx = Transaction { ..transaction, outputs: [wrong_multisig_output] }
+
+  validate_initiate_multisig(own_policy, own_ref, idx, tx)
 }
 
 test fail_init_too_little_tokens() fail {
   let contract_value = 100_000_000_000
-  let (own_policy, idx, _old_multisig_out_value, multisig_output) = base_init()
+  let (
+    own_policy,
+    own_ref,
+    idx,
+    __oldoutput_datum,
+    multisig_output,
+    transaction,
+  ) = base_init()
 
   let multisig_out_value = from_lovelace(contract_value)
 
@@ -189,17 +222,21 @@ test fail_init_too_little_tokens() fail {
       ),
     }
 
-  validate_initiate_multisig(
-    own_policy,
-    idx,
-    multisig_out_value,
-    [wrong_multisig_output],
-  )
+  let tx = Transaction { ..transaction, outputs: [wrong_multisig_output] }
+
+  validate_initiate_multisig(own_policy, own_ref, idx, tx)
 }
 
 test fail_init_wrong_token() fail {
   let contract_value = 100_000_000_000
-  let (own_policy, idx, _old_multisig_out_value, multisig_output) = base_init()
+  let (
+    own_policy,
+    own_ref,
+    idx,
+    __oldoutput_datum,
+    multisig_output,
+    transaction,
+  ) = base_init()
 
   let multisig_out_value = add(zero, own_policy, "not_multisig_token_name", 1)
 
@@ -214,44 +251,157 @@ test fail_init_wrong_token() fail {
       ),
     }
 
-  validate_initiate_multisig(
+  let tx = Transaction { ..transaction, outputs: [wrong_multisig_output] }
+
+  validate_initiate_multisig(own_policy, own_ref, idx, tx)
+}
+
+fn base_end() {
+  let (own_policy, own_ref, _idx, _output_datum, _multisig_output, _transaction) =
+    base_init()
+
+  // Create input and output UTxOs
+  let transaction_limit_value = 1_000_000_000
+
+  let contract_value = 100_000_000_000
+
+  let tx_hash = tests.test_224_01()
+
+  let pubkey_hash_01 = tests.test_224_02()
+  let pubkey_hash_02 = tests.test_224_03()
+  let pubkey_hash_03 = tests.test_224_04()
+  let pubkey_hash_04 = tests.test_224_05()
+
+  let signatories =
+    [pubkey_hash_01, pubkey_hash_02, pubkey_hash_03, pubkey_hash_04]
+
+  let threshold = list.length(signatories) / 2 + 1
+
+  let multisig_token_name = multisig_token_name(own_ref)
+  let multisig_value = add(zero, own_policy, multisig_token_name, 1)
+
+  let user_input =
+    tests.test_context_input_01(own_ref, own_policy, multisig_value, NoDatum)
+
+  let multisig_out_value = add(zero, own_policy, multisig_token_name, -1)
+
+  let output_datum =
+    tests.test_multisig_datum(signatories, threshold, transaction_limit_value)
+
+  let multisig_output =
+    tests.test_utxo_02(
+      own_policy,
+      multisig_out_value,
+      contract_value,
+      output_datum,
+    )
+
+  let transaction =
+    Transaction {
+      inputs: [user_input],
+      reference_inputs: [],
+      outputs: [multisig_output],
+      fee: 0,
+      mint: multisig_out_value,
+      certificates: [],
+      withdrawals: [],
+      validity_range: interval.everything,
+      extra_signatories: signatories,
+      redeemers: [],
+      datums: dict.empty,
+      id: tx_hash,
+      votes: [],
+      proposal_procedures: [],
+      current_treasury_amount: None,
+      treasury_donation: None,
+    }
+
+  (
     own_policy,
-    idx,
-    multisig_out_value,
-    [wrong_multisig_output],
+    0,
+    contract_value,
+    output_datum,
+    multisig_token_name,
+    multisig_output,
+    transaction,
   )
 }
 
 test succeed_end_multisig() {
-  let own_policy = tests.test_policy()
+  let (
+    own_policy,
+    idx,
+    _contract_value,
+    _output_datum,
+    _multisig_token_name,
+    multisig_output,
+    transaction,
+  ) = base_end()
 
-  let multisig_out_value = add(zero, own_policy, multisig_token_name, -1)
+  // let tx_hash = tests.test_224_01()
+  // let own_policy = tests.test_policy()
+  // let own_ref = tests.test_input_utxo_02(tx_hash)
+  // let pubkey_hash_01 = tests.test_224_02()
+  // let pubkey_hash_02 = tests.test_224_03()
+  // let pubkey_hash_03 = tests.test_224_04()
+  // let pubkey_hash_04 = tests.test_224_05()
+  // let signatories =
+  //   [pubkey_hash_01, pubkey_hash_02, pubkey_hash_03, pubkey_hash_04]
+  // let threshold = list.length(signatories) / 2 + 1
+  // let multisig_out_value = add(zero, own_policy, multisig_token_name, -1)
+  // let output_datum =
+  //   tests.test_multisig_datum(signatories, threshold, transaction_limit_value)
+  // let multisig_output =
+  //   tests.test_utxo_02(
+  //     own_policy,
+  //     multisig_out_value,
+  //     contract_value,
+  //     output_datum,
+  //   )
+  let tx = Transaction { ..transaction, outputs: [multisig_output] }
 
-  validate_multisig_end(own_policy, multisig_out_value)
-}
-
-test fail_end_multisig_wrong_token() fail {
-  let own_policy = tests.test_policy()
-
-  let multisig_out_value = add(zero, own_policy, "not_multisig_token_name", -1)
-
-  validate_multisig_end(own_policy, multisig_out_value)
+  validate_multisig_end(own_policy, idx, tx)
 }
 
 test fail_end_multisig_wrong_amount() fail {
-  let own_policy = tests.test_policy()
+  let (
+    own_policy,
+    idx,
+    contract_value,
+    output_datum,
+    multisig_token_name,
+    _multisig_output,
+    transaction,
+  ) = base_end()
 
   let multisig_out_value = add(zero, own_policy, multisig_token_name, -2)
 
-  validate_multisig_end(own_policy, multisig_out_value)
+  let multisig_output =
+    tests.test_utxo_02(
+      own_policy,
+      multisig_out_value,
+      contract_value,
+      output_datum,
+    )
+
+  let tx =
+    Transaction {
+      ..transaction,
+      mint: multisig_out_value,
+      outputs: [multisig_output],
+    }
+
+  validate_multisig_end(own_policy, idx, tx)
 }
 
 fn base_sign() {
-  // Set up test data
-  let own_policy = tests.test_policy()
-  let tx_hash = tests.test_224_01()
-  let init_output_ref = tests.test_input_utxo_02(tx_hash)
+  let (own_policy, own_ref, _idx, _output_datum, _multisig_output, _transaction) =
+    base_init()
 
+  // Set up test data
+  // let own_policy = tests.test_policy()
+  let tx_hash = tests.test_224_01()
+  // let init_output_ref = tests.test_input_utxo_02(tx_hash)
   // Create input and output UTxOs
   let transaction_limit_value = 1_000_000_000
 
@@ -276,15 +426,12 @@ fn base_sign() {
   let datum =
     tests.test_multisig_datum(signatories, threshold, transaction_limit_value)
 
+  let multisig_token_name = multisig_token_name(own_ref)
+
   let multisig_value =
     add(from_lovelace(contract_value), own_policy, multisig_token_name, 1)
   let multisig_input =
-    tests.test_context_input_01(
-      init_output_ref,
-      own_policy,
-      multisig_value,
-      datum,
-    )
+    tests.test_context_input_01(own_ref, own_policy, multisig_value, datum)
 
   let output_datum =
     tests.test_multisig_datum(signatories, threshold, transaction_limit_value)
@@ -328,16 +475,30 @@ fn base_sign() {
   let in_idx = 0
   let out_idx = 0
 
-  (datum, init_output_ref, in_idx, out_idx, transaction)
+  (datum, own_ref, in_idx, out_idx, multisig_token_name, transaction)
 }
 
 test success_sign() {
-  let (datum, init_output_ref, in_idx, out_idx, transaction) = base_sign()
+  let (
+    datum,
+    init_output_ref,
+    in_idx,
+    out_idx,
+    _multisig_token_name,
+    transaction,
+  ) = base_sign()
   validate_sign(datum, init_output_ref, in_idx, out_idx, transaction)
 }
 
 test fail_sign_insufficient_signatures() fail {
-  let (datum, init_output_ref, in_idx, out_idx, transaction) = base_sign()
+  let (
+    datum,
+    init_output_ref,
+    in_idx,
+    out_idx,
+    _multisig_token_name,
+    transaction,
+  ) = base_sign()
 
   let pubkey_hash_01 = tests.test_224_02()
   let pubkey_hash_02 = tests.test_224_03()
@@ -351,7 +512,14 @@ test fail_sign_insufficient_signatures() fail {
 }
 
 test fail_sign_wrong_spend_limit() fail {
-  let (datum, init_output_ref, in_idx, out_idx, transaction) = base_sign()
+  let (
+    datum,
+    init_output_ref,
+    in_idx,
+    out_idx,
+    multisig_token_name,
+    transaction,
+  ) = base_sign()
 
   let own_policy = tests.test_policy()
   let multisig_out_value = add(zero, own_policy, multisig_token_name, 1)
@@ -373,7 +541,14 @@ test fail_sign_wrong_spend_limit() fail {
 }
 
 test success_update_threshold() {
-  let (datum, init_output_ref, in_idx, out_idx, transaction) = base_sign()
+  let (
+    datum,
+    init_output_ref,
+    in_idx,
+    out_idx,
+    multisig_token_name,
+    transaction,
+  ) = base_sign()
 
   let own_policy = tests.test_policy()
 
@@ -412,8 +587,17 @@ test success_update_threshold() {
   )
 }
 
+// Add two outputs with one output with an extra signer.
+// (Change order of outputs)
 test success_update_add_signer() {
-  let (datum, init_output_ref, in_idx, out_idx, transaction) = base_sign()
+  let (
+    datum,
+    init_output_ref,
+    in_idx,
+    out_idx,
+    multisig_token_name,
+    transaction,
+  ) = base_sign()
 
   let own_policy = tests.test_policy()
 
@@ -455,8 +639,78 @@ test success_update_add_signer() {
   )
 }
 
+test fail_update_double_satisfaction() fail {
+  let (
+    datum,
+    init_output_ref,
+    in_idx,
+    out_idx,
+    multisig_token_name,
+    transaction,
+  ) = base_sign()
+
+  let own_policy = tests.test_policy()
+
+  let pubkey_hash_01 = tests.test_224_02()
+  let pubkey_hash_02 = tests.test_224_03()
+  let pubkey_hash_03 = tests.test_224_04()
+  let pubkey_hash_04 = tests.test_224_05()
+  let pubkey_hash_05 = tests.test_224_06()
+  let pubkey_hash_06 = tests.test_224_07()
+  let signatories =
+    [
+      pubkey_hash_01, pubkey_hash_02, pubkey_hash_03, pubkey_hash_04,
+      pubkey_hash_05,
+    ]
+
+  let new_threshold = 3
+  let spending_limit = 1_000_000_000
+  let contract_value = 100_000_000_000
+
+  let new_datum =
+    tests.test_multisig_datum(signatories, new_threshold, spending_limit)
+  let multisig_out_value = add(zero, own_policy, multisig_token_name, 1)
+  let own_output =
+    tests.test_utxo_02(
+      own_policy,
+      multisig_out_value,
+      contract_value,
+      new_datum,
+    )
+
+  let strange_signatories = signatories |> list.concat([pubkey_hash_06])
+  let strange_spending_limit = 10_000_000_000
+
+  let strange_datum =
+    tests.test_multisig_datum(
+      strange_signatories,
+      new_threshold,
+      strange_spending_limit,
+    )
+
+  let strange_output =
+    tests.test_utxo_02(
+      own_policy,
+      multisig_out_value,
+      contract_value,
+      strange_datum,
+    )
+
+  let tx_with_two_outputs =
+    Transaction { ..transaction, outputs: [own_output, strange_output] }
+
+  validate_update(datum, init_output_ref, in_idx, out_idx, tx_with_two_outputs)
+}
+
 test success_update_remove_signer() {
-  let (datum, init_output_ref, in_idx, out_idx, transaction) = base_sign()
+  let (
+    datum,
+    init_output_ref,
+    in_idx,
+    out_idx,
+    multisig_token_name,
+    transaction,
+  ) = base_sign()
 
   let own_policy = tests.test_policy()
 
@@ -492,7 +746,14 @@ test success_update_remove_signer() {
 }
 
 test success_update_remove_all_signers() {
-  let (datum, init_output_ref, in_idx, out_idx, transaction) = base_sign()
+  let (
+    datum,
+    init_output_ref,
+    in_idx,
+    out_idx,
+    multisig_token_name,
+    transaction,
+  ) = base_sign()
 
   let own_policy = tests.test_policy()
 
@@ -529,7 +790,8 @@ test success_update_remove_all_signers() {
 test succeed_remove_miltisig() {
   let own_policy = tests.test_policy()
   let tx_hash = tests.test_224_01()
-  let init_output_ref = tests.test_input_utxo_02(tx_hash)
+  let own_ref = tests.test_input_utxo_02(tx_hash)
+  let multisig_token_name = multisig_token_name(own_ref)
 
   // Create input and output UTxOs
   let transaction_limit_value = 1_000_000_000
@@ -552,12 +814,7 @@ test succeed_remove_miltisig() {
   let multisig_value =
     add(from_lovelace(contract_value), own_policy, multisig_token_name, 1)
   let multisig_input =
-    tests.test_context_input_01(
-      init_output_ref,
-      own_policy,
-      multisig_value,
-      datum,
-    )
+    tests.test_context_input_01(own_ref, own_policy, multisig_value, datum)
 
   let multisig_out_value = add(zero, own_policy, multisig_token_name, -1)
 
@@ -589,5 +846,5 @@ test succeed_remove_miltisig() {
       treasury_donation: None,
     }
 
-  validate_remove(datum, init_output_ref, 0, transaction)
+  validate_remove(datum, own_ref, 0, transaction)
 }

@@ -35,6 +35,10 @@ pub fn test_224_06() {
   bytearray.take(blake2b_256(#"06"), 28)
 }
 
+pub fn test_224_07() {
+  bytearray.take(blake2b_256(#"07"), 28)
+}
+
 // Generate a bytearray with blake2b_256
 pub fn test_policy() {
   bytearray.take(blake2b_256(#"07"), 28)

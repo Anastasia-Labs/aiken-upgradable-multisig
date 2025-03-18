@@ -1,9 +1,12 @@
 use aiken/collection/list
-use cardano/assets.{PolicyId, quantity_of}
-use cardano/transaction.{Input, Output}
+use aiken/crypto.{Blake2b_256, Hash, sha3_256}
+use aiken/primitive/bytearray
+use cardano/assets.{AssetName, PolicyId, quantity_of}
+use cardano/transaction.{Input, Output, OutputReference, Transaction}
 use upgradable_multisig/types.{MultisigDatum, PubKeyHash}
 
-pub const multisig_token_name = "multisig"
+// TODO: Unique token names
+// pub const multisig_token_name = "multisig"
 
 pub fn get_input_by_token(
   inputs: List<Input>,
@@ -16,9 +19,10 @@ pub fn get_input_by_token(
   )
 }
 
-pub fn validate_multisig_datum(datum: MultisigDatum) -> Bool {
+//  TODO: Check all the signatures are correct (data == data)
+pub fn validate_multisig_datum(datum: MultisigDatum, tx: Transaction) -> Bool {
   let signers_nr = list.length(datum.signers)
-  (signers_nr >= datum.threshold)? && (datum.threshold > 0)?
+  (signers_nr >= datum.threshold)? && (datum.threshold > 0)? && (tx.extra_signatories == datum.signers)?
 }
 
 fn has_enough_signers(
@@ -46,4 +50,27 @@ pub fn signed_within_threshold(
   extra_signatories: List<PubKeyHash>,
 ) -> Bool {
   has_enough_signers(datum.signers, datum.threshold, extra_signatories)
+}
+
+/// Calculate a unique token name from a `TxId#Idx` and prefix. Can be combined
+/// with the `find` module to create unique token names from the first input
+/// utxo inside the transaction.
+///
+/// ```aiken
+/// values.unique_token_name(tx_id, tx_idx, cip68.prefix_333)
+/// ```
+pub fn unique_token_name(
+  txid: Hash<Blake2b_256, Transaction>,
+  idx: Int,
+  prefix: ByteArray,
+) -> AssetName {
+  let txid_hash: ByteArray = sha3_256(txid)
+  let prepend_index: ByteArray = bytearray.push(txid_hash, idx)
+  let prepend_prefix: ByteArray = bytearray.concat(prefix, prepend_index)
+  bytearray.slice(prepend_prefix, 0, 31)
+}
+
+pub fn multisig_token_name(own_ref: OutputReference) -> ByteArray {
+  // let sig_tkn_name =
+  unique_token_name(own_ref.transaction_id, own_ref.output_index, "multisig")
 }
