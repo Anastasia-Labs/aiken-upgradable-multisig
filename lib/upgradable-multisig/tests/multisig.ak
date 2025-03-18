@@ -10,6 +10,19 @@ use upgradable_multisig/multisig/validation.{
 }
 use upgradable_multisig/tests/tests
 
+test succeed_init_multisig_fuzzy(
+  test_values via tests.init_multisig_fuzzer(2_000_000, 4_000_000),
+) {
+  let (own_policy, idx, multisig_output, multisig_out_value) = test_values
+
+  validate_initiate_multisig(
+    own_policy,
+    idx,
+    multisig_out_value,
+    multisig_output,
+  )
+}
+
 fn base_init() {
   let own_policy = tests.test_policy()
 
