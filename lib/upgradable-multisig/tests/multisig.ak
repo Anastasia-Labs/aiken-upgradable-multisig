@@ -11,7 +11,7 @@ use upgradable_multisig/multisig/validation.{
 use upgradable_multisig/tests/tests
 
 test succeed_init_multisig_fuzzy(
-  test_values via tests.init_multisig_fuzzer(2_000_000, 4_000_000),
+  test_values via tests.init_multisig_fuzzer(1_000_000, 1_000_000_000),
 ) {
   let (own_policy, idx, multisig_output, multisig_out_value) = test_values
 
@@ -26,6 +26,26 @@ test succeed_init_multisig_fuzzy(
 test succeed_end_multisig_fuzzy(test_values via tests.end_multisig_fuzzer()) {
   let (own_policy, multisig_out_value) = test_values
   validate_multisig_end(own_policy, multisig_out_value)
+}
+
+test succeed_sign_multisig_fuzzy(
+  test_values via tests.sign_multisig_fuzzer(
+    1_000_000,
+    1_000_000_000,
+  ),
+) {
+  let (datum, input_output_ref, in_idx, out_idx, transaction) = test_values
+  validate_sign(datum, input_output_ref, in_idx, out_idx, transaction)
+}
+
+test succeed_update_multisig_fuzzy(
+  test_values via tests.update_multisig_fuzzer(
+    1_000_000,
+    1_000_000_000,
+  ),
+) {
+  let (datum, input_output_ref, in_idx, out_idx, transaction) = test_values
+  validate_update(datum, input_output_ref, in_idx, out_idx, transaction)
 }
 
 fn base_init() {

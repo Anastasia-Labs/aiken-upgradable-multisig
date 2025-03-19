@@ -2,6 +2,7 @@ use aiken/collection/dict
 use aiken/collection/list
 use aiken/crypto.{Signature, blake2b_256}
 use aiken/fuzz.{and_then}
+use aiken/interval.{everything}
 use aiken/primitive/bytearray
 use cardano/address.{Address, Inline, Script, VerificationKey}
 use cardano/assets.{
@@ -105,13 +106,11 @@ pub fn init_multisig_fuzzer(
   max_lovelaces: Int,
 ) -> Fuzzer<(PolicyId, Int, List<Output>, Value)> {
   let own_policy <- and_then(fuzz.bytearray_fixed(28))
-
   let stake_key_hash <- and_then(fuzz.bytearray_fixed(28))
 
-  let (lovelace_value, lovelace_count) <-
+  let (locked_lovelace_value, locked_lovelace_count) <-
     and_then(lovelace_value_fuzzer(min_lovelaces, max_lovelaces))
-  let spending_limit <-
-    and_then(fuzz.int_between(min_lovelaces, lovelace_count))
+  let spending_limit <- and_then(fuzz.int_between(0, locked_lovelace_count))
 
   let number_of_signatores <- and_then(number_of_signatores_fuzzer())
   let datum <- and_then(datum_fuzzer(number_of_signatores, spending_limit))
@@ -123,12 +122,152 @@ pub fn init_multisig_fuzzer(
         payment_credential: Script(own_policy),
         stake_credential: Some(Inline(VerificationKey(stake_key_hash))),
       },
-      value: merge(lovelace_value, multisig_nft_value),
+      value: merge(locked_lovelace_value, multisig_nft_value),
       datum: InlineDatum(datum),
       reference_script: None,
     }
 
   fuzz.constant((own_policy, 0, [output], multisig_nft_value))
+  // TODO positive tests for other random outputs,
+  // Negative if there is own_policy present in them
+}
+
+pub fn end_multisig_fuzzer() -> Fuzzer<(PolicyId, Value)> {
+  let own_policy <- and_then(fuzz.bytearray_fixed(28))
+  let multisig_nft_value = add(zero, own_policy, multisig_token_name, -1)
+
+  fuzz.constant((own_policy, multisig_nft_value))
+}
+
+pub fn sign_multisig_fuzzer(
+  min_lovelaces: Int,
+  max_lovelaces: Int,
+) -> Fuzzer<(MultisigDatum, OutputReference, Int, Int, Transaction)> {
+  let own_policy <- and_then(fuzz.bytearray_fixed(28))
+
+  sign_multisig_fuzzer_set_policy(
+    own_policy,
+    min_lovelaces,
+    max_lovelaces,
+  )
+}
+
+pub fn sign_multisig_fuzzer_set_policy(
+  own_policy: PolicyId,
+  min_lovelaces: Int,
+  max_lovelaces: Int,
+) -> Fuzzer<(MultisigDatum, OutputReference, Int, Int, Transaction)> {
+  let stake_key_hash_1 <- and_then(fuzz.bytearray_fixed(28))
+  let stake_key_hash_2 <- and_then(fuzz.bytearray_fixed(28))
+  let recipient_key_hash <- and_then(fuzz.bytearray_fixed(28))
+
+  let (locked_lovelace_value, locked_lovelace_count) <-
+    and_then(lovelace_value_fuzzer(min_lovelaces, max_lovelaces))
+  let spending_limit <- and_then(fuzz.int_between(0, locked_lovelace_count))
+  let (unlocked_lovelace_value, unlocked_lovelace_count) <-
+    and_then(lovelace_value_fuzzer(0, spending_limit))
+  let rest_lovelace_value =
+    assets.from_lovelace(locked_lovelace_count - unlocked_lovelace_count)
+
+  let multisig_nft_value = add(zero, own_policy, multisig_token_name, 1)
+
+  let tx_hash <- and_then(fuzz.bytearray_fixed(28))
+  let input_output_ref =
+    OutputReference { transaction_id: tx_hash, output_index: 1 }
+
+  // TODO check if this is correct
+  let number_of_signatores <- and_then(number_of_signatores_fuzzer())
+  let datum <- and_then(datum_fuzzer(number_of_signatores, spending_limit))
+  let input =
+    Input {
+      output_reference: input_output_ref,
+      output: Output {
+        address: Address(Script(own_policy), None),
+        value: merge(locked_lovelace_value, multisig_nft_value),
+        datum: InlineDatum(datum),
+        reference_script: None,
+      },
+    }
+
+  let recipient_output =
+    Output {
+      address: Address {
+        payment_credential: VerificationKey(recipient_key_hash),
+        stake_credential: Some(Inline(VerificationKey(stake_key_hash_1))),
+      },
+      value: unlocked_lovelace_value,
+      datum: InlineDatum(datum),
+      reference_script: None,
+    }
+
+  let own_output =
+    Output {
+      address: Address {
+        payment_credential: Script(own_policy),
+        stake_credential: Some(Inline(VerificationKey(stake_key_hash_2))),
+      },
+      value: merge(rest_lovelace_value, multisig_nft_value),
+      datum: InlineDatum(datum),
+      reference_script: None,
+    }
+
+  let transaction =
+    Transaction {
+      inputs: [input],
+      reference_inputs: [],
+      outputs: [own_output, recipient_output],
+      fee: 0,
+      mint: zero,
+      certificates: [],
+      withdrawals: [],
+      validity_range: everything,
+      extra_signatories: datum.signers,
+      redeemers: [],
+      datums: dict.empty,
+      id: tx_hash,
+      votes: [],
+      proposal_procedures: [],
+      current_treasury_amount: None,
+      treasury_donation: None,
+    }
+
+  let in_idx = 0
+  let out_idx = 0
+
+  fuzz.constant((datum, input_output_ref, in_idx, out_idx, transaction))
+}
+
+pub fn update_multisig_fuzzer(
+  min_lovelaces: Int,
+  max_lovelaces: Int,
+) -> Fuzzer<(MultisigDatum, OutputReference, Int, Int, Transaction)> {
+  let own_policy <- and_then(fuzz.bytearray_fixed(28))
+  let (datum, input_output_ref, in_idx, out_idx, transaction) <-
+    and_then(sign_multisig_fuzzer_set_policy(own_policy, min_lovelaces, max_lovelaces))
+
+  let spending_limit <- and_then(fuzz.int_between(0, max_lovelaces))
+  let number_of_signatores <- and_then(number_of_signatores_fuzzer())
+  let new_datum <- and_then(datum_fuzzer(number_of_signatores, spending_limit))
+
+
+  expect Some(own_output) = transaction.outputs |> list.head() // TODO change to a filter by address
+  let new_output =
+    Output {
+      ..own_output,
+      datum: InlineDatum(new_datum) // How to cast to the MultisigDatum ?
+    }
+  expect Output {datum: InlineDatum(datum) ..} = own_output
+
+  let new_transaction =
+    Transaction { ..transaction, outputs: [new_output] }
+
+  fuzz.constant((
+    datum,
+    input_output_ref,
+    in_idx,
+    out_idx,
+    new_transaction,
+  ))
 }
 
 pub fn test_multisig_datum(signitories, signer_count, limit_qty) {
@@ -139,13 +278,6 @@ pub fn test_multisig_datum(signitories, signer_count, limit_qty) {
     fund_asset_name: ada_asset_name,
     spending_limit: limit_qty,
   }
-}
-
-pub fn end_multisig_fuzzer() -> Fuzzer<(PolicyId, Value)> {
-  let own_policy <- and_then(fuzz.bytearray_fixed(28))
-  let multisig_nft_value = add(zero, own_policy, multisig_token_name, -1)
-
-  fuzz.constant((own_policy, multisig_nft_value))
 }
 
 pub fn test_context_input_01(output_ref, own_cs, token_value, datum) {
