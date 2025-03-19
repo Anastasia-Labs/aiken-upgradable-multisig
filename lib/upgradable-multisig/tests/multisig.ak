@@ -23,6 +23,11 @@ test succeed_init_multisig_fuzzy(
   )
 }
 
+test succeed_end_multisig_fuzzy(test_values via tests.end_multisig_fuzzer()) {
+  let (own_policy, multisig_out_value) = test_values
+  validate_multisig_end(own_policy, multisig_out_value)
+}
+
 fn base_init() {
   let own_policy = tests.test_policy()
 

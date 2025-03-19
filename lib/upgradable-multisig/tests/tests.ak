@@ -116,7 +116,6 @@ pub fn init_multisig_fuzzer(
   let number_of_signatores <- and_then(number_of_signatores_fuzzer())
   let datum <- and_then(datum_fuzzer(number_of_signatores, spending_limit))
 
-  // TODO dynamic policy
   let multisig_nft_value = add(zero, own_policy, multisig_token_name, 1)
   let output =
     Output {
@@ -140,6 +139,13 @@ pub fn test_multisig_datum(signitories, signer_count, limit_qty) {
     fund_asset_name: ada_asset_name,
     spending_limit: limit_qty,
   }
+}
+
+pub fn end_multisig_fuzzer() -> Fuzzer<(PolicyId, Value)> {
+  let own_policy <- and_then(fuzz.bytearray_fixed(28))
+  let multisig_nft_value = add(zero, own_policy, multisig_token_name, -1)
+
+  fuzz.constant((own_policy, multisig_nft_value))
 }
 
 pub fn test_context_input_01(output_ref, own_cs, token_value, datum) {
