@@ -278,7 +278,6 @@ pub fn update_multisig_fuzzer(
   max_lovelaces: Int,
 ) -> Fuzzer<(MultisigDatum, OutputReference, Int, Int, Transaction)> {
   let own_policy <- and_then(fuzz.bytearray_fixed(28))
-  let stake_key_hash <- and_then(fuzz.bytearray_fixed(28))
   let tx_hash <- and_then(fuzz.bytearray_fixed(28))
   // TODO check if this is correct
   let input_output_ref =
@@ -310,7 +309,7 @@ pub fn update_multisig_fuzzer(
     Output {
       address: Address {
         payment_credential: Script(own_policy),
-        stake_credential: Some(Inline(VerificationKey(stake_key_hash))),
+        stake_credential: None
       },
       value: merge(locked_lovelace_value, multisig_nft_value),
       datum: InlineDatum(updated_datum),
