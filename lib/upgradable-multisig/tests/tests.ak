@@ -197,6 +197,7 @@ pub fn sign_multisig_fuzzer(
   let recipient_key_hash <- and_then(fuzz.bytearray_fixed(28))
 
   let tx_hash <- and_then(fuzz.bytearray_fixed(28))
+  // TODO check if this is correct
   let input_output_ref =
     OutputReference { transaction_id: tx_hash, output_index: 1 }
 
@@ -211,7 +212,6 @@ pub fn sign_multisig_fuzzer(
   let multisig_nft_value =
     add(zero, own_policy, multisig_token_name(input_output_ref), 1)
 
-  // TODO check if this is correct
   let number_of_signatores <- and_then(number_of_signatores_fuzzer())
   let datum <- and_then(datum_fuzzer(number_of_signatores, spending_limit))
   let input =
@@ -280,6 +280,7 @@ pub fn update_multisig_fuzzer(
   let own_policy <- and_then(fuzz.bytearray_fixed(28))
   let stake_key_hash <- and_then(fuzz.bytearray_fixed(28))
   let tx_hash <- and_then(fuzz.bytearray_fixed(28))
+  // TODO check if this is correct
   let input_output_ref =
     OutputReference { transaction_id: tx_hash, output_index: 1 }
 
@@ -290,7 +291,6 @@ pub fn update_multisig_fuzzer(
   let multisig_nft_value =
     add(zero, own_policy, multisig_token_name(input_output_ref), 1)
 
-  // TODO check if this is correct
   let number_of_signatores <- and_then(number_of_signatores_fuzzer())
   let old_datum <- and_then(datum_fuzzer(number_of_signatores, spending_limit))
   let input =
@@ -351,6 +351,8 @@ pub fn remove_multisig_fuzzer(
   let stake_key_hash <- and_then(fuzz.bytearray_fixed(28))
   let recipient_key_hash <- and_then(fuzz.bytearray_fixed(28))
   let tx_hash <- and_then(fuzz.bytearray_fixed(28))
+
+  // TODO check if this is correct
   let input_output_ref =
     OutputReference { transaction_id: tx_hash, output_index: 1 }
 
@@ -361,7 +363,6 @@ pub fn remove_multisig_fuzzer(
   let multisig_nft_value =
     add(zero, own_policy, multisig_token_name(input_output_ref), 1)
 
-  // TODO check if this is correct
   let number_of_signatores <- and_then(number_of_signatores_fuzzer())
   let datum <- and_then(datum_fuzzer(number_of_signatores, spending_limit))
   let input =
