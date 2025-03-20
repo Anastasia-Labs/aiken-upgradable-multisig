@@ -13,7 +13,7 @@ use upgradable_multisig/multisig/utils.{
 }
 use upgradable_multisig/types.{MultisigDatum}
 
-pub fn validate_initiate_multisig(
+pub fn validate_init(
   own_policy: PolicyId,
   own_ref: OutputReference,
   output_index: Int,
@@ -49,7 +49,7 @@ pub fn validate_initiate_multisig(
   }
 }
 
-pub fn validate_multisig_end(
+pub fn validate_end(
   own_policy: PolicyId,
   input_index: Int,
   tx: Transaction,

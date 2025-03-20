@@ -1,8 +1,7 @@
 use cardano/assets.{PolicyId}
 use cardano/transaction.{OutputReference, Transaction}
 use upgradable_multisig/multisig/validation.{
-  validate_initiate_multisig, validate_multisig_end, validate_remove,
-  validate_sign, validate_update,
+  validate_end, validate_init, validate_remove, validate_sign, validate_update,
 }
 use upgradable_multisig/types.{
   EndMultiSig, InitMultiSig, MintMultisig, MultisigDatum, MultisigRedeemer,
@@ -13,15 +12,9 @@ validator multisig {
   mint(r: MintMultisig, own_policy: PolicyId, tx: Transaction) {
     when r is {
       InitMultiSig { output_reference, output_index } ->
-        validate_initiate_multisig(
-          own_policy,
-          output_reference,
-          output_index,
-          tx,
-        )
+        validate_init(own_policy, output_reference, output_index, tx)
 
-      EndMultiSig { input_index } ->
-        validate_multisig_end(own_policy, input_index, tx)
+      EndMultiSig { input_index } -> validate_end(own_policy, input_index, tx)
     }
   }
 

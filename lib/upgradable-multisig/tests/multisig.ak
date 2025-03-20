@@ -5,27 +5,23 @@ use cardano/assets.{ada_asset_name, ada_policy_id, add, from_lovelace, zero}
 use cardano/transaction.{InlineDatum, NoDatum, Output, Transaction}
 use upgradable_multisig/multisig/utils.{multisig_token_name}
 use upgradable_multisig/multisig/validation.{
-  validate_initiate_multisig, validate_multisig_end, validate_remove,
-  validate_sign, validate_update,
+  validate_end, validate_init, validate_remove, validate_sign, validate_update,
 }
 use upgradable_multisig/tests/tests
 
 test succeed_init_multisig_fuzzy(
   test_values via tests.init_multisig_fuzzer(1_000_000, 1_000_000_000),
 ) {
-  let (own_policy, idx, multisig_output, multisig_out_value) = test_values
+  let (own_policy, own_ref, idx, transaction) = test_values
 
-  validate_initiate_multisig(
-    own_policy,
-    idx,
-    multisig_out_value,
-    multisig_output,
-  )
+  validate_init(own_policy, own_ref, idx, transaction)
 }
 
-test succeed_end_multisig_fuzzy(test_values via tests.end_multisig_fuzzer()) {
-  let (own_policy, multisig_out_value) = test_values
-  validate_multisig_end(own_policy, multisig_out_value)
+test succeed_end_multisig_fuzzy(
+  test_values via tests.end_multisig_fuzzer(1_000_000, 1_000_000_000),
+) {
+  let (own_policy, idx, transaction) = test_values
+  validate_end(own_policy, idx, transaction)
 }
 
 test succeed_sign_multisig_fuzzy(
@@ -121,7 +117,7 @@ test succeed_init_multisig() {
 
   let tx = Transaction { ..transaction, outputs: [multisig_output] }
 
-  validate_initiate_multisig(own_policy, own_ref, idx, tx)
+  validate_init(own_policy, own_ref, idx, tx)
 }
 
 test fail_init_script_address() fail {
@@ -131,7 +127,7 @@ test fail_init_script_address() fail {
   let wrong_policy = tests.test_wrong_policy()
   let tx = Transaction { ..transaction, outputs: [multisig_output] }
 
-  validate_initiate_multisig(wrong_policy, own_ref, idx, tx)
+  validate_init(wrong_policy, own_ref, idx, tx)
 }
 
 test fail_init_no_signatories() fail {
@@ -152,7 +148,7 @@ test fail_init_no_signatories() fail {
 
   let tx = Transaction { ..transaction, outputs: [wrong_multisig_output] }
 
-  validate_initiate_multisig(own_policy, own_ref, idx, tx)
+  validate_init(own_policy, own_ref, idx, tx)
 }
 
 test fail_init_threshold_too_large() fail {
@@ -178,7 +174,7 @@ test fail_init_threshold_too_large() fail {
 
   let tx = Transaction { ..transaction, outputs: [wrong_multisig_output] }
 
-  validate_initiate_multisig(own_policy, own_ref, idx, tx)
+  validate_init(own_policy, own_ref, idx, tx)
 }
 
 test fail_init_threshold_too_small() fail {
@@ -204,7 +200,7 @@ test fail_init_threshold_too_small() fail {
 
   let tx = Transaction { ..transaction, outputs: [wrong_multisig_output] }
 
-  validate_initiate_multisig(own_policy, own_ref, idx, tx)
+  validate_init(own_policy, own_ref, idx, tx)
 }
 
 test fail_init_too_many_tokens() fail {
@@ -234,7 +230,7 @@ test fail_init_too_many_tokens() fail {
 
   let tx = Transaction { ..transaction, outputs: [wrong_multisig_output] }
 
-  validate_initiate_multisig(own_policy, own_ref, idx, tx)
+  validate_init(own_policy, own_ref, idx, tx)
 }
 
 test fail_init_too_little_tokens() fail {
@@ -263,7 +259,7 @@ test fail_init_too_little_tokens() fail {
 
   let tx = Transaction { ..transaction, outputs: [wrong_multisig_output] }
 
-  validate_initiate_multisig(own_policy, own_ref, idx, tx)
+  validate_init(own_policy, own_ref, idx, tx)
 }
 
 test fail_init_wrong_token() fail {
@@ -292,7 +288,7 @@ test fail_init_wrong_token() fail {
 
   let tx = Transaction { ..transaction, outputs: [wrong_multisig_output] }
 
-  validate_initiate_multisig(own_policy, own_ref, idx, tx)
+  validate_init(own_policy, own_ref, idx, tx)
 }
 
 fn base_end() {
@@ -379,7 +375,7 @@ test succeed_end_multisig() {
 
   let tx = Transaction { ..transaction, outputs: [multisig_output] }
 
-  validate_multisig_end(own_policy, idx, tx)
+  validate_end(own_policy, idx, tx)
 }
 
 test fail_end_multisig_wrong_amount() fail {
@@ -410,7 +406,7 @@ test fail_end_multisig_wrong_amount() fail {
       outputs: [multisig_output],
     }
 
-  validate_multisig_end(own_policy, idx, tx)
+  validate_end(own_policy, idx, tx)
 }
 
 fn base_sign() {
