@@ -14,54 +14,6 @@ use cardano/transaction.{
 use upgradable_multisig/multisig/utils.{multisig_token_name}
 use upgradable_multisig/types.{MultisigDatum}
 
-// Generate a bytearray with blake2b_256
-pub fn test_224_01() {
-  bytearray.take(blake2b_256(#"01"), 28)
-}
-
-// Generate a bytearray with blake2b_256
-pub fn test_224_02() {
-  bytearray.take(blake2b_256(#"02"), 28)
-}
-
-// Generate a bytearray with blake2b_256
-pub fn test_224_03() {
-  bytearray.take(blake2b_256(#"03"), 28)
-}
-
-pub fn test_224_04() {
-  bytearray.take(blake2b_256(#"04"), 28)
-}
-
-pub fn test_224_05() {
-  bytearray.take(blake2b_256(#"05"), 28)
-}
-
-pub fn test_224_06() {
-  bytearray.take(blake2b_256(#"06"), 28)
-}
-
-// Generate a bytearray with blake2b_256
-pub fn test_policy() -> PolicyId {
-  bytearray.take(blake2b_256(#"07"), 28)
-}
-
-pub fn test_wrong_policy() {
-  bytearray.take(blake2b_256(#"08"), 28)
-}
-
-pub fn test_withdraw_pkh() {
-  bytearray.take(blake2b_256(#"09"), 28)
-}
-
-pub fn test_input_utxo_01() {
-  OutputReference { transaction_id: test_224_01(), output_index: 1 }
-}
-
-pub fn test_input_utxo_02(utxo_hash) {
-  OutputReference { transaction_id: utxo_hash, output_index: 1 }
-}
-
 pub fn lovelace_value_fuzzer(
   min_lovelaces: Int,
   max_lovelaces: Int,
@@ -139,7 +91,6 @@ pub fn end_multisig_fuzzer() -> Fuzzer<(PolicyId, Value)> {
   fuzz.constant((own_policy, multisig_nft_value))
 }
 
-
 pub fn sign_multisig_fuzzer(
   min_lovelaces: Int,
   max_lovelaces: Int,
@@ -162,8 +113,8 @@ pub fn sign_multisig_fuzzer(
   let tx_hash <- and_then(fuzz.bytearray_fixed(28))
   let input_output_ref =
     OutputReference { transaction_id: tx_hash, output_index: 1 }
-  // TODO check if this is correct
 
+  // TODO check if this is correct
   let number_of_signatores <- and_then(number_of_signatores_fuzzer())
   let datum <- and_then(datum_fuzzer(number_of_signatores, spending_limit))
   let input =
@@ -242,8 +193,8 @@ pub fn update_multisig_fuzzer(
   let tx_hash <- and_then(fuzz.bytearray_fixed(28))
   let input_output_ref =
     OutputReference { transaction_id: tx_hash, output_index: 1 }
-  // TODO check if this is correct
 
+  // TODO check if this is correct
   let number_of_signatores <- and_then(number_of_signatores_fuzzer())
   let old_datum <- and_then(datum_fuzzer(number_of_signatores, spending_limit))
   let input =
@@ -257,7 +208,8 @@ pub fn update_multisig_fuzzer(
       },
     }
 
-  let updated_datum <- and_then(datum_fuzzer(number_of_signatores, spending_limit))
+  let updated_datum <-
+    and_then(datum_fuzzer(number_of_signatores, spending_limit))
   let output =
     Output {
       address: Address {
@@ -292,15 +244,8 @@ pub fn update_multisig_fuzzer(
   let in_idx = 0
   let out_idx = 0
 
-  fuzz.constant((
-    old_datum,
-    input_output_ref,
-    in_idx,
-    out_idx,
-    transaction,
-  ))
+  fuzz.constant((old_datum, input_output_ref, in_idx, out_idx, transaction))
 }
-
 
 pub fn remove_multisig_fuzzer(
   min_lovelaces: Int,
@@ -319,8 +264,8 @@ pub fn remove_multisig_fuzzer(
   let tx_hash <- and_then(fuzz.bytearray_fixed(28))
   let input_output_ref =
     OutputReference { transaction_id: tx_hash, output_index: 1 }
-  // TODO check if this is correct
 
+  // TODO check if this is correct
   let number_of_signatores <- and_then(number_of_signatores_fuzzer())
   let datum <- and_then(datum_fuzzer(number_of_signatores, spending_limit))
   let input =
@@ -351,7 +296,7 @@ pub fn remove_multisig_fuzzer(
       reference_inputs: [],
       outputs: [output],
       fee: 0,
-      mint: (add(zero, own_policy, multisig_token_name, -1)),
+      mint: add(zero, own_policy, multisig_token_name, -1),
       certificates: [],
       withdrawals: [],
       validity_range: everything,
@@ -367,12 +312,55 @@ pub fn remove_multisig_fuzzer(
 
   let in_idx = 0
 
-  fuzz.constant((
-    datum,
-    input_output_ref,
-    in_idx,
-    transaction,
-  ))
+  fuzz.constant((datum, input_output_ref, in_idx, transaction))
+}
+
+// Generate a bytearray with blake2b_256
+pub fn test_224_01() {
+  bytearray.take(blake2b_256(#"01"), 28)
+}
+
+// Generate a bytearray with blake2b_256
+pub fn test_224_02() {
+  bytearray.take(blake2b_256(#"02"), 28)
+}
+
+// Generate a bytearray with blake2b_256
+pub fn test_224_03() {
+  bytearray.take(blake2b_256(#"03"), 28)
+}
+
+pub fn test_224_04() {
+  bytearray.take(blake2b_256(#"04"), 28)
+}
+
+pub fn test_224_05() {
+  bytearray.take(blake2b_256(#"05"), 28)
+}
+
+pub fn test_224_06() {
+  bytearray.take(blake2b_256(#"06"), 28)
+}
+
+// Generate a bytearray with blake2b_256
+pub fn test_policy() -> PolicyId {
+  bytearray.take(blake2b_256(#"07"), 28)
+}
+
+pub fn test_wrong_policy() {
+  bytearray.take(blake2b_256(#"08"), 28)
+}
+
+pub fn test_withdraw_pkh() {
+  bytearray.take(blake2b_256(#"09"), 28)
+}
+
+pub fn test_input_utxo_01() {
+  OutputReference { transaction_id: test_224_01(), output_index: 1 }
+}
+
+pub fn test_input_utxo_02(utxo_hash) {
+  OutputReference { transaction_id: utxo_hash, output_index: 1 }
 }
 
 pub fn test_multisig_datum(signitories, signer_count, limit_qty) {

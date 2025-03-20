@@ -29,30 +29,21 @@ test succeed_end_multisig_fuzzy(test_values via tests.end_multisig_fuzzer()) {
 }
 
 test succeed_sign_multisig_fuzzy(
-  test_values via tests.sign_multisig_fuzzer(
-    1_000_000,
-    1_000_000_000,
-  ),
+  test_values via tests.sign_multisig_fuzzer(1_000_000, 1_000_000_000),
 ) {
   let (datum, input_output_ref, in_idx, out_idx, transaction) = test_values
   validate_sign(datum, input_output_ref, in_idx, out_idx, transaction)
 }
 
 test succeed_update_multisig_fuzzy(
-  test_values via tests.update_multisig_fuzzer(
-    1_000_000,
-    1_000_000_000,
-  ),
+  test_values via tests.update_multisig_fuzzer(1_000_000, 1_000_000_000),
 ) {
   let (datum, input_output_ref, in_idx, out_idx, transaction) = test_values
   validate_update(datum, input_output_ref, in_idx, out_idx, transaction)
 }
 
 test succeed_remove_multisig_fuzzy(
-  test_values via tests.remove_multisig_fuzzer(
-    1_000_000,
-    1_000_000_000,
-  ),
+  test_values via tests.remove_multisig_fuzzer(1_000_000, 1_000_000_000),
 ) {
   let (datum, input_output_ref, in_idx, transaction) = test_values
   validate_remove(datum, input_output_ref, in_idx, transaction)
