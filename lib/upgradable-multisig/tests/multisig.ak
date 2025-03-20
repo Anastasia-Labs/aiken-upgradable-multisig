@@ -338,26 +338,6 @@ test succeed_end_multisig() {
     transaction,
   ) = base_end()
 
-  // let tx_hash = tests.test_224_01()
-  // let own_policy = tests.test_policy()
-  // let own_ref = tests.test_input_utxo_02(tx_hash)
-  // let pubkey_hash_01 = tests.test_224_02()
-  // let pubkey_hash_02 = tests.test_224_03()
-  // let pubkey_hash_03 = tests.test_224_04()
-  // let pubkey_hash_04 = tests.test_224_05()
-  // let signatories =
-  //   [pubkey_hash_01, pubkey_hash_02, pubkey_hash_03, pubkey_hash_04]
-  // let threshold = list.length(signatories) / 2 + 1
-  // let multisig_out_value = add(zero, own_policy, multisig_token_name, -1)
-  // let output_datum =
-  //   tests.test_multisig_datum(signatories, threshold, transaction_limit_value)
-  // let multisig_output =
-  //   tests.test_utxo_02(
-  //     own_policy,
-  //     multisig_out_value,
-  //     contract_value,
-  //     output_datum,
-  //   )
   let tx = Transaction { ..transaction, outputs: [multisig_output] }
 
   validate_multisig_end(own_policy, idx, tx)
@@ -399,9 +379,7 @@ fn base_sign() {
     base_init()
 
   // Set up test data
-  // let own_policy = tests.test_policy()
   let tx_hash = tests.test_224_01()
-  // let init_output_ref = tests.test_input_utxo_02(tx_hash)
   // Create input and output UTxOs
   let transaction_limit_value = 1_000_000_000
 
@@ -587,8 +565,6 @@ test success_update_threshold() {
   )
 }
 
-// Add two outputs with one output with an extra signer.
-// (Change order of outputs)
 test success_update_add_signer() {
   let (
     datum,
@@ -639,6 +615,8 @@ test success_update_add_signer() {
   )
 }
 
+// Add two outputs with one output with an extra signer.
+// (Change order of outputs)
 test fail_update_double_satisfaction() fail {
   let (
     datum,

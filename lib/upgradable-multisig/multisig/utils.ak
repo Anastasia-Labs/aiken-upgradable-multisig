@@ -19,7 +19,11 @@ pub fn get_input_by_token(
 //  Check all the signatures are correct
 pub fn validate_multisig_datum(datum: MultisigDatum, tx: Transaction) -> Bool {
   let signers_nr = list.length(datum.signers)
-  (signers_nr >= datum.threshold)? && (datum.threshold > 0)? && (tx.extra_signatories == datum.signers)?
+
+  let sorted_datum_signers = list.sort(datum.signers, bytearray.compare)
+  let sorted_tx_signatories = list.sort(tx.extra_signatories, bytearray.compare)
+
+  (signers_nr >= datum.threshold)? && (datum.threshold > 0)? && (sorted_datum_signers == sorted_tx_signatories)?
 }
 
 fn has_enough_signers(
@@ -67,6 +71,7 @@ pub fn unique_token_name(
   bytearray.slice(prepend_prefix, 0, 31)
 }
 
+// TODO: Find out whether token name is 28 or 32 bytes.
 pub fn multisig_token_name(own_ref: OutputReference) -> ByteArray {
   // let sig_tkn_name =
   unique_token_name(own_ref.transaction_id, own_ref.output_index, "multisig")

@@ -171,16 +171,18 @@ pub fn validate_update(
       let out_value_unchanged =
         assets.without_lovelace(out_value) == assets.without_lovelace(in_value)
 
-      // Use the Filter function to filter by own_output to ensure only one output from the contract
+      // Modified filter function with safer pattern matching
+      // Use the Filter function to filter by own_policy to ensure only one output from the contract
       let own_outputs =
         list.filter(
           tx.outputs,
           fn(out) {
-            expect Output {
-              address: Address { payment_credential: Script(policy), .. },
-              ..
-            } = out
-            policy == own_policy
+            when
+              (out.address.payment_credential, out.address.stake_credential)
+            is {
+              (Script(policy), None) -> policy == own_policy
+              _ -> False
+            }
           },
         )
       let single_output = list.length(own_outputs) == 1
