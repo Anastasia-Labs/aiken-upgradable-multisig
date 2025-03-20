@@ -139,24 +139,12 @@ pub fn end_multisig_fuzzer() -> Fuzzer<(PolicyId, Value)> {
   fuzz.constant((own_policy, multisig_nft_value))
 }
 
+
 pub fn sign_multisig_fuzzer(
   min_lovelaces: Int,
   max_lovelaces: Int,
 ) -> Fuzzer<(MultisigDatum, OutputReference, Int, Int, Transaction)> {
   let own_policy <- and_then(fuzz.bytearray_fixed(28))
-
-  sign_multisig_fuzzer_set_policy(
-    own_policy,
-    min_lovelaces,
-    max_lovelaces,
-  )
-}
-
-pub fn sign_multisig_fuzzer_set_policy(
-  own_policy: PolicyId,
-  min_lovelaces: Int,
-  max_lovelaces: Int,
-) -> Fuzzer<(MultisigDatum, OutputReference, Int, Int, Transaction)> {
   let stake_key_hash_1 <- and_then(fuzz.bytearray_fixed(28))
   let stake_key_hash_2 <- and_then(fuzz.bytearray_fixed(28))
   let recipient_key_hash <- and_then(fuzz.bytearray_fixed(28))
@@ -174,8 +162,8 @@ pub fn sign_multisig_fuzzer_set_policy(
   let tx_hash <- and_then(fuzz.bytearray_fixed(28))
   let input_output_ref =
     OutputReference { transaction_id: tx_hash, output_index: 1 }
-
   // TODO check if this is correct
+
   let number_of_signatores <- and_then(number_of_signatores_fuzzer())
   let datum <- and_then(datum_fuzzer(number_of_signatores, spending_limit))
   let input =
@@ -242,31 +230,148 @@ pub fn update_multisig_fuzzer(
   max_lovelaces: Int,
 ) -> Fuzzer<(MultisigDatum, OutputReference, Int, Int, Transaction)> {
   let own_policy <- and_then(fuzz.bytearray_fixed(28))
-  let (datum, input_output_ref, in_idx, out_idx, transaction) <-
-    and_then(sign_multisig_fuzzer_set_policy(own_policy, min_lovelaces, max_lovelaces))
 
-  let spending_limit <- and_then(fuzz.int_between(0, max_lovelaces))
+  let stake_key_hash <- and_then(fuzz.bytearray_fixed(28))
+
+  let (locked_lovelace_value, locked_lovelace_count) <-
+    and_then(lovelace_value_fuzzer(min_lovelaces, max_lovelaces))
+  let spending_limit <- and_then(fuzz.int_between(0, locked_lovelace_count))
+
+  let multisig_nft_value = add(zero, own_policy, multisig_token_name, 1)
+
+  let tx_hash <- and_then(fuzz.bytearray_fixed(28))
+  let input_output_ref =
+    OutputReference { transaction_id: tx_hash, output_index: 1 }
+  // TODO check if this is correct
+
   let number_of_signatores <- and_then(number_of_signatores_fuzzer())
-  let new_datum <- and_then(datum_fuzzer(number_of_signatores, spending_limit))
-
-
-  expect Some(own_output) = transaction.outputs |> list.head() // TODO change to a filter by address
-  let new_output =
-    Output {
-      ..own_output,
-      datum: InlineDatum(new_datum) // How to cast to the MultisigDatum ?
+  let old_datum <- and_then(datum_fuzzer(number_of_signatores, spending_limit))
+  let input =
+    Input {
+      output_reference: input_output_ref,
+      output: Output {
+        address: Address(Script(own_policy), None),
+        value: merge(locked_lovelace_value, multisig_nft_value),
+        datum: InlineDatum(old_datum),
+        reference_script: None,
+      },
     }
-  expect Output {datum: InlineDatum(datum) ..} = own_output
 
-  let new_transaction =
-    Transaction { ..transaction, outputs: [new_output] }
+  let updated_datum <- and_then(datum_fuzzer(number_of_signatores, spending_limit))
+  let output =
+    Output {
+      address: Address {
+        payment_credential: Script(own_policy),
+        stake_credential: Some(Inline(VerificationKey(stake_key_hash))),
+      },
+      value: merge(locked_lovelace_value, multisig_nft_value),
+      datum: InlineDatum(updated_datum),
+      reference_script: None,
+    }
+
+  let transaction =
+    Transaction {
+      inputs: [input],
+      reference_inputs: [],
+      outputs: [output],
+      fee: 0,
+      mint: zero,
+      certificates: [],
+      withdrawals: [],
+      validity_range: everything,
+      extra_signatories: old_datum.signers,
+      redeemers: [],
+      datums: dict.empty,
+      id: tx_hash,
+      votes: [],
+      proposal_procedures: [],
+      current_treasury_amount: None,
+      treasury_donation: None,
+    }
+
+  let in_idx = 0
+  let out_idx = 0
+
+  fuzz.constant((
+    old_datum,
+    input_output_ref,
+    in_idx,
+    out_idx,
+    transaction,
+  ))
+}
+
+
+pub fn remove_multisig_fuzzer(
+  min_lovelaces: Int,
+  max_lovelaces: Int,
+) -> Fuzzer<(MultisigDatum, OutputReference, Int, Transaction)> {
+  let own_policy <- and_then(fuzz.bytearray_fixed(28))
+  let stake_key_hash <- and_then(fuzz.bytearray_fixed(28))
+  let recipient_key_hash <- and_then(fuzz.bytearray_fixed(28))
+
+  let (locked_lovelace_value, locked_lovelace_count) <-
+    and_then(lovelace_value_fuzzer(min_lovelaces, max_lovelaces))
+  let spending_limit <- and_then(fuzz.int_between(0, locked_lovelace_count))
+
+  let multisig_nft_value = add(zero, own_policy, multisig_token_name, 1)
+
+  let tx_hash <- and_then(fuzz.bytearray_fixed(28))
+  let input_output_ref =
+    OutputReference { transaction_id: tx_hash, output_index: 1 }
+  // TODO check if this is correct
+
+  let number_of_signatores <- and_then(number_of_signatores_fuzzer())
+  let datum <- and_then(datum_fuzzer(number_of_signatores, spending_limit))
+  let input =
+    Input {
+      output_reference: input_output_ref,
+      output: Output {
+        address: Address(Script(own_policy), None),
+        value: merge(locked_lovelace_value, multisig_nft_value),
+        datum: InlineDatum(datum),
+        reference_script: None,
+      },
+    }
+
+  let output =
+    Output {
+      address: Address {
+        payment_credential: VerificationKey(recipient_key_hash),
+        stake_credential: Some(Inline(VerificationKey(stake_key_hash))),
+      },
+      value: locked_lovelace_value,
+      datum: NoDatum,
+      reference_script: None,
+    }
+
+  let transaction =
+    Transaction {
+      inputs: [input],
+      reference_inputs: [],
+      outputs: [output],
+      fee: 0,
+      mint: (add(zero, own_policy, multisig_token_name, -1)),
+      certificates: [],
+      withdrawals: [],
+      validity_range: everything,
+      extra_signatories: datum.signers,
+      redeemers: [],
+      datums: dict.empty,
+      id: tx_hash,
+      votes: [],
+      proposal_procedures: [],
+      current_treasury_amount: None,
+      treasury_donation: None,
+    }
+
+  let in_idx = 0
 
   fuzz.constant((
     datum,
     input_output_ref,
     in_idx,
-    out_idx,
-    new_transaction,
+    transaction,
   ))
 }
 
