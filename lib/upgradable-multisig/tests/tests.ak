@@ -309,7 +309,7 @@ pub fn update_multisig_fuzzer(
     Output {
       address: Address {
         payment_credential: Script(own_policy),
-        stake_credential: None
+        stake_credential: None,
       },
       value: merge(locked_lovelace_value, multisig_nft_value),
       datum: InlineDatum(updated_datum),
