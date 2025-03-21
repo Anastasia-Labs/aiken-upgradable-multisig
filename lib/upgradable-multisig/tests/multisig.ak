@@ -573,9 +573,9 @@ test success_update_threshold() {
   let pubkey_hash_04 = tests.test_224_05()
   let signatories =
     [pubkey_hash_01, pubkey_hash_02, pubkey_hash_03, pubkey_hash_04]
+      |> list.sort(bytearray.compare)
 
-  let new_threshold = 0
-  // Surprising that it's possible
+  let new_threshold = 2
   let spending_limit = 1_000_000_000
   let contract_value = 100_000_000_000
 
@@ -591,7 +591,11 @@ test success_update_threshold() {
     )
 
   let transaction_new_output =
-    Transaction { ..transaction, outputs: [own_output] }
+    Transaction {
+      ..transaction,
+      outputs: [own_output],
+      extra_signatories: signatories,
+    }
 
   validate_update(
     datum,
@@ -624,6 +628,7 @@ test success_update_add_signer() {
       pubkey_hash_01, pubkey_hash_02, pubkey_hash_03, pubkey_hash_04,
       pubkey_hash_05,
     ]
+      |> list.sort(bytearray.compare)
 
   let new_threshold = 3
   let spending_limit = 1_000_000_000
@@ -641,7 +646,11 @@ test success_update_add_signer() {
     )
 
   let transaction_new_output =
-    Transaction { ..transaction, outputs: [own_output] }
+    Transaction {
+      ..transaction,
+      outputs: [own_output],
+      extra_signatories: signatories,
+    }
 
   validate_update(
     datum,
@@ -732,50 +741,8 @@ test success_update_remove_signer() {
   let pubkey_hash_01 = tests.test_224_02()
   let signatories = [pubkey_hash_01]
 
-  let new_threshold = 3
+  let new_threshold = 1
   // Lost the funds
-  let spending_limit = 1_000_000_000
-  let contract_value = 100_000_000_000
-
-  let new_datum =
-    tests.test_multisig_datum(signatories, new_threshold, spending_limit)
-  let multisig_out_value = add(zero, own_policy, multisig_token_name, 1)
-  let own_output =
-    tests.test_utxo_02(
-      own_policy,
-      multisig_out_value,
-      contract_value,
-      new_datum,
-    )
-
-  let transaction_new_output =
-    Transaction { ..transaction, outputs: [own_output] }
-
-  validate_update(
-    datum,
-    init_output_ref,
-    in_idx,
-    out_idx,
-    transaction_new_output,
-  )
-}
-
-test success_update_remove_all_signers() {
-  let (
-    datum,
-    init_output_ref,
-    in_idx,
-    out_idx,
-    multisig_token_name,
-    transaction,
-  ) = base_sign()
-
-  let own_policy = tests.test_policy()
-
-  let signatories = []
-
-  // That's possible as well?
-  let new_threshold = 0
   let spending_limit = 1_000_000_000
   let contract_value = 100_000_000_000
 

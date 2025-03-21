@@ -344,7 +344,10 @@ pub fn update_multisig_fuzzer(
       certificates: [],
       withdrawals: [],
       validity_range: everything,
-      extra_signatories: old_datum.signers,
+      extra_signatories: old_datum.signers
+        |> list.concat(updated_datum.signers)
+        |> list.unique
+        |> list.sort(bytearray.compare),
       redeemers: [],
       datums: dict.empty,
       id: tx_hash,
