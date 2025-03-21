@@ -1,6 +1,7 @@
 use aiken/collection/dict
 use aiken/collection/list
 use aiken/interval.{everything}
+use aiken/primitive/bytearray
 use cardano/assets.{ada_asset_name, ada_policy_id, add, from_lovelace, zero}
 use cardano/transaction.{InlineDatum, NoDatum, Output, Transaction}
 use upgradable_multisig/multisig/utils.{multisig_token_name}
@@ -10,7 +11,7 @@ use upgradable_multisig/multisig/validation.{
 use upgradable_multisig/tests/tests
 
 test succeed_init_multisig_fuzzy(
-  test_values via tests.init_multisig_fuzzer(1_000_000, 1_000_000_000),
+  test_values via tests.init_multisig_fuzzer(1_000_000, 1_000_000_000, True),
 ) {
   let (own_policy, own_ref, idx, transaction) = test_values
 
@@ -62,6 +63,7 @@ fn base_init() {
 
   let signatories =
     [pubkey_hash_01, pubkey_hash_02, pubkey_hash_03, pubkey_hash_04]
+      |> list.sort(bytearray.compare)
 
   let threshold = list.length(signatories) / 2 + 1
 

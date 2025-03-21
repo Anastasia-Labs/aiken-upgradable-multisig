@@ -2,9 +2,7 @@ use aiken/collection/dict
 use aiken/collection/list
 use aiken_design_patterns/singular_utxo_indexer
 use cardano/address.{Address, Script}
-use cardano/assets.{
-  PolicyId, Value, flatten, quantity_of, tokens, without_lovelace,
-}
+use cardano/assets.{PolicyId, quantity_of, tokens}
 use cardano/transaction.{
   InlineDatum, Input, Output, OutputReference, Transaction,
 }
@@ -19,8 +17,7 @@ pub fn validate_init(
   output_index: Int,
   tx: Transaction,
 ) -> Bool {
-  let minted_value: Value = tx.mint
-  let outputs: List<Output> = tx.outputs
+  let Transaction { outputs, mint, extra_signatories, .. } = tx
 
   expect Some(Output {
     address: output_address,
@@ -33,13 +30,13 @@ pub fn validate_init(
 
   let multisig_token_name = utils.multisig_token_name(own_ref)
 
-  expect [Pair(tkn, 1)] = dict.to_pairs(tokens(minted_value, own_policy))
+  expect [Pair(tkn, 1)] = dict.to_pairs(tokens(mint, own_policy))
   let minted_token_correct = tkn == multisig_token_name
   let output_value_has_token =
     quantity_of(output_value, own_policy, multisig_token_name) == 1
 
   expect multisig_datum: MultisigDatum = output_datum
-  let datum_correct = validate_multisig_datum(multisig_datum, tx)
+  let datum_correct = validate_multisig_datum(multisig_datum, extra_signatories)
 
   and {
     address_correct?,
@@ -55,13 +52,13 @@ pub fn validate_end(
   tx: Transaction,
 ) -> Bool {
   expect Some(contract_input) = list.at(tx.inputs, input_index)
-  let multisig_nft =
-    contract_input.output.value |> without_lovelace() |> flatten()
-  expect [(multisig_policy, multisig_token_name, 1)] = multisig_nft
+
+  let sig_token = assets.tokens(contract_input.output.value, own_policy)
+  expect [Pair(multisig_token_name, 1)] = dict.to_pairs(sig_token)
 
   expect [Pair(tkn, amt)] = dict.to_pairs(tokens(tx.mint, own_policy))
 
-  (tkn == multisig_token_name)? && (own_policy == multisig_policy)? && (amt == -1)?
+  (tkn == multisig_token_name)? && (amt == -1)?
 }
 
 pub fn validate_sign(
@@ -96,9 +93,8 @@ pub fn validate_sign(
       expect output_datum: MultisigDatum = out_datum
       let out_datum_correct = output_datum == datum
 
-      let multisig_nft = in_value |> without_lovelace() |> flatten()
-
-      expect [(_multisig_policy, multisig_token_name, 1)] = multisig_nft
+      let sig_token = assets.tokens(in_value, own_policy)
+      expect [Pair(multisig_token_name, 1)] = dict.to_pairs(sig_token)
 
       let in_token_correct =
         quantity_of(in_value, own_policy, multisig_token_name) == 1
@@ -134,6 +130,7 @@ pub fn validate_update(
   output_index: Int,
   tx: Transaction,
 ) -> Bool {
+  let Transaction { extra_signatories, .. } = tx
   singular_utxo_indexer.spend(
     validation_logic: fn(_in_idx, own_input, _redeemer, _out_ix, own_output) {
       expect Input {
@@ -154,24 +151,33 @@ pub fn validate_update(
         ..
       } = own_output
 
-      let enough_signers = signed_within_threshold(datum, tx.extra_signatories)
+      let enough_signers = signed_within_threshold(datum, extra_signatories)
       let out_address_correct = out_credential == in_credential
 
       expect updated_datum: MultisigDatum = out_datum
       let out_datum_correct =
-        updated_datum.fund_policy_id == datum.fund_policy_id && updated_datum.fund_asset_name == datum.fund_asset_name
-      let multisig_nft = in_value |> without_lovelace() |> flatten()
+        updated_datum.fund_policy_id == datum.fund_policy_id && updated_datum.fund_asset_name == datum.fund_asset_name && validate_multisig_datum(
+          updated_datum,
+          extra_signatories,
+        )
 
-      expect [(multisig_policy, multisig_token_name, 1)] = multisig_nft
+      let sig_token = assets.tokens(in_value, own_policy)
+      expect [Pair(multisig_token_name, 1)] = dict.to_pairs(sig_token)
 
       let in_token_correct =
-        (quantity_of(in_value, own_policy, multisig_token_name) == 1)? && (own_policy == multisig_policy)?
+        (quantity_of(in_value, own_policy, multisig_token_name) == 1)?
 
+      expect [Pair(_, out_ada), ..out_tl] =
+        out_value |> assets.to_dict |> dict.to_pairs
+      expect [Pair(_, in_ada), ..in_tl] =
+        in_value |> assets.to_dict |> dict.to_pairs
       // Add without lovelace in check.
-      let out_value_unchanged =
-        assets.without_lovelace(out_value) == assets.without_lovelace(in_value)
+      let out_value_unchanged = out_tl == in_tl
+      expect [Pair(_, out_amount), ..] = dict.to_pairs(out_ada)
+      expect [Pair(_, in_amount), ..] = dict.to_pairs(in_ada)
 
-      // Modified filter function with safer pattern matching
+      let out_ada_correct = out_amount >= in_amount
+
       // Use the Filter function to filter by own_policy to ensure only one output from the contract
       let own_outputs =
         list.filter(
@@ -193,6 +199,7 @@ pub fn validate_update(
         out_datum_correct?,
         in_token_correct?,
         out_value_unchanged?,
+        out_ada_correct?,
         single_output?,
       }
     },
@@ -224,11 +231,8 @@ pub fn validate_remove(
   let reference_correct = own_ref == in_ref
   let enough_signers = signed_within_threshold(datum, extra_signatories)
 
-  let multisig_nft = in_value |> without_lovelace() |> flatten()
-
-  expect [(multisig_policy, multisig_token_name, 1)] = multisig_nft
-
-  expect own_policy == multisig_policy
+  let sig_token = assets.tokens(in_value, own_policy)
+  expect [Pair(multisig_token_name, 1)] = dict.to_pairs(sig_token)
 
   let token_correct =
     quantity_of(in_value, own_policy, multisig_token_name) == 1

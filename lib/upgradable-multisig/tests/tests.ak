@@ -28,7 +28,11 @@ fn number_of_signatores_fuzzer() -> Fuzzer<Int> {
 }
 
 fn signatures_fuzzer(number_of_signatores: Int) -> Fuzzer<List<Signature>> {
-  fuzz.list_between(fuzz.bytearray_fixed(28), 1, number_of_signatores)
+  fuzz.list_between(
+    fuzz.bytearray_fixed(28),
+    number_of_signatores,
+    number_of_signatores,
+  )
 }
 
 fn threshold_fuzzer(number_of_signatores: Int) -> Fuzzer<Int> {
@@ -38,8 +42,15 @@ fn threshold_fuzzer(number_of_signatores: Int) -> Fuzzer<Int> {
 pub fn datum_fuzzer(
   number_of_signatores: Int,
   spending_limit: Int,
+  sort_signers: Bool,
 ) -> Fuzzer<MultisigDatum> {
-  let signers <- and_then(signatures_fuzzer(number_of_signatores))
+  let init_signers <- and_then(signatures_fuzzer(number_of_signatores))
+  let signers =
+    if sort_signers {
+      list.sort(init_signers, bytearray.compare)
+    } else {
+      init_signers
+    }
   let signer_threshold <- and_then(threshold_fuzzer(list.length(signers)))
 
   fuzz.constant(
@@ -56,6 +67,7 @@ pub fn datum_fuzzer(
 pub fn init_multisig_fuzzer(
   min_lovelaces: Int,
   max_lovelaces: Int,
+  sort_signers: Bool,
 ) -> Fuzzer<(PolicyId, OutputReference, Int, Transaction)> {
   let own_policy <- and_then(fuzz.bytearray_fixed(28))
   let tx_hash <- and_then(fuzz.bytearray_fixed(28))
@@ -81,7 +93,8 @@ pub fn init_multisig_fuzzer(
   let spending_limit <- and_then(fuzz.int_between(0, locked_lovelace_count))
 
   let number_of_signatores <- and_then(number_of_signatores_fuzzer())
-  let datum <- and_then(datum_fuzzer(number_of_signatores, spending_limit))
+  let datum <-
+    and_then(datum_fuzzer(number_of_signatores, spending_limit, sort_signers))
   let multisig_nft_value =
     add(zero, own_policy, multisig_token_name(input_output_ref), 1)
   let output =
@@ -95,6 +108,8 @@ pub fn init_multisig_fuzzer(
       reference_script: None,
     }
 
+  let sorted_datum_signers = list.sort(datum.signers, bytearray.compare)
+
   let transaction =
     Transaction {
       inputs: [input],
@@ -105,7 +120,7 @@ pub fn init_multisig_fuzzer(
       certificates: [],
       withdrawals: [],
       validity_range: everything,
-      extra_signatories: datum.signers,
+      extra_signatories: sorted_datum_signers |> list.unique,
       redeemers: [],
       datums: dict.empty,
       id: tx_hash,
@@ -150,7 +165,8 @@ pub fn end_multisig_fuzzer(
   let spending_limit <- and_then(fuzz.int_between(0, locked_lovelace_count))
 
   let number_of_signatores <- and_then(number_of_signatores_fuzzer())
-  let datum <- and_then(datum_fuzzer(number_of_signatores, spending_limit))
+  let datum <-
+    and_then(datum_fuzzer(number_of_signatores, spending_limit, True))
   let output =
     Output {
       address: Address {
@@ -213,7 +229,8 @@ pub fn sign_multisig_fuzzer(
     add(zero, own_policy, multisig_token_name(input_output_ref), 1)
 
   let number_of_signatores <- and_then(number_of_signatores_fuzzer())
-  let datum <- and_then(datum_fuzzer(number_of_signatores, spending_limit))
+  let datum <-
+    and_then(datum_fuzzer(number_of_signatores, spending_limit, True))
   let input =
     Input {
       output_reference: input_output_ref,
@@ -291,7 +308,8 @@ pub fn update_multisig_fuzzer(
     add(zero, own_policy, multisig_token_name(input_output_ref), 1)
 
   let number_of_signatores <- and_then(number_of_signatores_fuzzer())
-  let old_datum <- and_then(datum_fuzzer(number_of_signatores, spending_limit))
+  let old_datum <-
+    and_then(datum_fuzzer(number_of_signatores, spending_limit, True))
   let input =
     Input {
       output_reference: input_output_ref,
@@ -304,7 +322,7 @@ pub fn update_multisig_fuzzer(
     }
 
   let updated_datum <-
-    and_then(datum_fuzzer(number_of_signatores, spending_limit))
+    and_then(datum_fuzzer(number_of_signatores, spending_limit, True))
   let output =
     Output {
       address: Address {
@@ -363,7 +381,8 @@ pub fn remove_multisig_fuzzer(
     add(zero, own_policy, multisig_token_name(input_output_ref), 1)
 
   let number_of_signatores <- and_then(number_of_signatores_fuzzer())
-  let datum <- and_then(datum_fuzzer(number_of_signatores, spending_limit))
+  let datum <-
+    and_then(datum_fuzzer(number_of_signatores, spending_limit, True))
   let input =
     Input {
       output_reference: input_output_ref,

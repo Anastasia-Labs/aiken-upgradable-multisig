@@ -1,6 +1,8 @@
+use aiken/builtin
 use aiken/collection/list
-use aiken/crypto.{Blake2b_256, Hash, sha3_256}
+use aiken/crypto.{Blake2b_256, Hash, VerificationKeyHash, sha3_256}
 use aiken/primitive/bytearray
+use aiken_scott_utils/list as scott_list
 use cardano/assets.{AssetName, PolicyId, quantity_of}
 use cardano/transaction.{Input, Output, OutputReference, Transaction}
 use upgradable_multisig/types.{MultisigDatum, PubKeyHash}
@@ -17,13 +19,37 @@ pub fn get_input_by_token(
 }
 
 //  Check all the signatures are correct
-pub fn validate_multisig_datum(datum: MultisigDatum, tx: Transaction) -> Bool {
-  let signers_nr = list.length(datum.signers)
+pub fn validate_multisig_datum(
+  datum: MultisigDatum,
+  extra_signatories: List<VerificationKeyHash>,
+) -> Bool {
+  let datum_signers = datum.signers
+  let signers_nr = list.length(datum_signers)
 
-  let sorted_datum_signers = list.sort(datum.signers, bytearray.compare)
-  let sorted_tx_signatories = list.sort(tx.extra_signatories, bytearray.compare)
+  let
+    all_signers_have_signed,
+    _,
+  <-
+    scott_list.foldl2(
+      datum_signers,
+      True,
+      extra_signatories,
+      fn(datum_signer, have_signed_so_far, remaining_tx_signatories, return) {
+        let relevant_signatories =
+          remaining_tx_signatories
+            |> list.drop_while(
+                fn(s) { bytearray.compare(s, datum_signer) == Less },
+              )
 
-  (signers_nr >= datum.threshold)? && (datum.threshold > 0)? && (sorted_datum_signers == sorted_tx_signatories)?
+        let expected_signer = builtin.head_list(relevant_signatories)
+        return(
+          have_signed_so_far && expected_signer == datum_signer,
+          relevant_signatories,
+        )
+      },
+    )
+
+  (signers_nr >= datum.threshold)? && (datum.threshold > 0)? && all_signers_have_signed?
 }
 
 fn has_enough_signers(
