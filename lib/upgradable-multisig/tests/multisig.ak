@@ -18,6 +18,14 @@ test succeed_init_multisig_fuzzy(
   validate_init(own_policy, own_ref, idx, transaction)
 }
 
+test fail_init_multisig_fuzzy(
+  test_values via tests.init_multisig_fail_fuzzer(1_000_000, 1_000_000_000),
+) fail {
+  let (own_policy, own_ref, idx, transaction) = test_values
+
+  validate_init(own_policy, own_ref, idx, transaction)
+}
+
 test succeed_end_multisig_fuzzy(
   test_values via tests.end_multisig_fuzzer(1_000_000, 1_000_000_000),
 ) {

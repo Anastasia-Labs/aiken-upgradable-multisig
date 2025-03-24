@@ -28,11 +28,8 @@ fn number_of_signatores_fuzzer() -> Fuzzer<Int> {
 }
 
 fn signatures_fuzzer(number_of_signatores: Int) -> Fuzzer<List<Signature>> {
-  fuzz.list_between(
-    fuzz.bytearray_fixed(28),
-    number_of_signatores,
-    number_of_signatores,
-  )
+  // Couldn't find a better way to generate exactly n random signatures
+  fuzz.list_between(fuzz.bytearray_fixed(28), number_of_signatores, number_of_signatores)
 }
 
 fn threshold_fuzzer(number_of_signatores: Int) -> Fuzzer<Int> {
@@ -121,6 +118,132 @@ pub fn init_multisig_fuzzer(
       withdrawals: [],
       validity_range: everything,
       extra_signatories: sorted_datum_signers |> list.unique,
+      redeemers: [],
+      datums: dict.empty,
+      id: tx_hash,
+      votes: [],
+      proposal_procedures: [],
+      current_treasury_amount: None,
+      treasury_donation: None,
+    }
+
+  let out_idx = 0
+
+  fuzz.constant((own_policy, input_output_ref, out_idx, transaction))
+  // TODO positive tests for other random outputs,
+  // Negative if there is own_policy present in them
+}
+
+pub fn datum_fail_fuzzer(
+  number_of_signatores: Int,
+  correct_spending_limit: Int,
+  fail_points: List<String>
+) -> Fuzzer<MultisigDatum> {
+  let signers <- and_then(signatures_fuzzer(number_of_signatores))
+  let signer_threshold <- and_then(
+    if list.has(fail_points, @"number_of_signatores") {
+      fuzz.either(
+        fuzz.int_between(-255, 0),
+        fuzz.int_between(number_of_signatores, 255)
+      )
+    } else {
+      fuzz.int_between(1, number_of_signatores)
+    }
+  )
+  let spending_limit <- and_then(
+    if list.has(fail_points, @"spending_limit") {
+      fuzz.either(
+        fuzz.int_between((-1) * correct_spending_limit, -1),
+        fuzz.int_between(correct_spending_limit + 1, 255)
+      )
+    } else {
+      fuzz.constant(correct_spending_limit)
+    }
+  )
+
+  fuzz.constant(
+    MultisigDatum {
+      signers,
+      threshold: signer_threshold,
+      fund_policy_id: ada_policy_id,
+      fund_asset_name: ada_asset_name,
+      spending_limit,
+    },
+  )
+}
+
+pub fn init_fail_points_fuzzer() -> Fuzzer<List<String>> {
+  fuzz.set_between(
+    fuzz.map(
+      fuzz.pick([
+      @"number_of_signatores",
+      @"spending_limit",
+
+      // @"multisig_nft_value",
+      // @"signers_transaction",
+      ]),
+      (fn ((_a, b)) {b} )
+    ),
+    1,
+    2
+  )
+}
+
+pub fn init_multisig_fail_fuzzer(
+  min_lovelaces: Int,
+  max_lovelaces: Int,
+) -> Fuzzer<(PolicyId, OutputReference, Int, Transaction)> {
+  let fail_points <- and_then(init_fail_points_fuzzer())
+  trace @"fail_points": fail_points
+
+  let own_policy <- and_then(fuzz.bytearray_fixed(28))
+  let tx_hash <- and_then(fuzz.bytearray_fixed(28))
+  let input_output_ref =
+    OutputReference { transaction_id: tx_hash, output_index: 1 }
+
+  let (locked_lovelace_value, locked_lovelace_count) <-
+    and_then(lovelace_value_fuzzer(min_lovelaces, max_lovelaces))
+
+  let input =
+    Input {
+      output_reference: input_output_ref,
+      output: Output {
+        address: Address(Script(own_policy), None),
+        value: locked_lovelace_value,
+        datum: NoDatum,
+        reference_script: None,
+      },
+    }
+
+  let stake_key_hash <- and_then(fuzz.bytearray_fixed(28))
+
+  let spending_limit <- and_then(fuzz.int_between(0, locked_lovelace_count))
+  let number_of_signatores <- and_then(number_of_signatores_fuzzer())
+  let datum <- and_then(datum_fail_fuzzer(number_of_signatores, spending_limit, fail_points))
+  let multisig_nft_value =
+    add(zero, own_policy, multisig_token_name(input_output_ref), 1)
+  let output =
+    Output {
+      address: Address {
+        payment_credential: Script(own_policy),
+        stake_credential: Some(Inline(VerificationKey(stake_key_hash))),
+      },
+      value: merge(locked_lovelace_value, multisig_nft_value),
+      datum: InlineDatum(datum),
+      reference_script: None,
+    }
+
+  let transaction =
+    Transaction {
+      inputs: [input],
+      reference_inputs: [],
+      outputs: [output],
+      fee: 0,
+      mint: multisig_nft_value,
+      certificates: [],
+      withdrawals: [],
+      validity_range: everything,
+      extra_signatories: datum.signers,
       redeemers: [],
       datums: dict.empty,
       id: tx_hash,
