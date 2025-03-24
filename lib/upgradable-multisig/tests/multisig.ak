@@ -11,7 +11,7 @@ use upgradable_multisig/multisig/validation.{
 use upgradable_multisig/tests/tests
 
 test succeed_init_multisig_fuzzy(
-  test_values via tests.init_multisig_fuzzer(1_000_000, 1_000_000_000, True),
+  test_values via tests.init_multisig_fuzzer(1_000_000, 1_000_000_000),
 ) {
   let (own_policy, own_ref, idx, transaction) = test_values
 

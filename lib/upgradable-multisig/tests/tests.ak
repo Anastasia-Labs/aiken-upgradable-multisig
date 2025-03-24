@@ -29,7 +29,11 @@ fn number_of_signatores_fuzzer() -> Fuzzer<Int> {
 
 fn signatures_fuzzer(number_of_signatores: Int) -> Fuzzer<List<Signature>> {
   // Couldn't find a better way to generate exactly n random signatures
-  fuzz.list_between(fuzz.bytearray_fixed(28), number_of_signatores, number_of_signatores)
+  fuzz.list_between(
+    fuzz.bytearray_fixed(28),
+    number_of_signatores,
+    number_of_signatores,
+  )
 }
 
 fn threshold_fuzzer(number_of_signatores: Int) -> Fuzzer<Int> {
@@ -39,15 +43,11 @@ fn threshold_fuzzer(number_of_signatores: Int) -> Fuzzer<Int> {
 pub fn datum_fuzzer(
   number_of_signatores: Int,
   spending_limit: Int,
-  sort_signers: Bool,
 ) -> Fuzzer<MultisigDatum> {
   let init_signers <- and_then(signatures_fuzzer(number_of_signatores))
   let signers =
-    if sort_signers {
-      list.sort(init_signers, bytearray.compare)
-    } else {
-      init_signers
-    }
+    // Not unique signers are allowed
+    list.sort(init_signers, bytearray.compare)
   let signer_threshold <- and_then(threshold_fuzzer(list.length(signers)))
 
   fuzz.constant(
@@ -64,7 +64,6 @@ pub fn datum_fuzzer(
 pub fn init_multisig_fuzzer(
   min_lovelaces: Int,
   max_lovelaces: Int,
-  sort_signers: Bool,
 ) -> Fuzzer<(PolicyId, OutputReference, Int, Transaction)> {
   let own_policy <- and_then(fuzz.bytearray_fixed(28))
   let tx_hash <- and_then(fuzz.bytearray_fixed(28))
@@ -91,7 +90,7 @@ pub fn init_multisig_fuzzer(
 
   let number_of_signatores <- and_then(number_of_signatores_fuzzer())
   let datum <-
-    and_then(datum_fuzzer(number_of_signatores, spending_limit, sort_signers))
+    and_then(datum_fuzzer(number_of_signatores, spending_limit))
   let multisig_nft_value =
     add(zero, own_policy, multisig_token_name(input_output_ref), 1)
   let output =
@@ -137,29 +136,31 @@ pub fn init_multisig_fuzzer(
 pub fn datum_fail_fuzzer(
   number_of_signatores: Int,
   correct_spending_limit: Int,
-  fail_points: List<String>
+  fail_points: List<String>,
 ) -> Fuzzer<MultisigDatum> {
   let signers <- and_then(signatures_fuzzer(number_of_signatores))
-  let signer_threshold <- and_then(
-    if list.has(fail_points, @"number_of_signatores") {
-      fuzz.either(
-        fuzz.int_between(-255, 0),
-        fuzz.int_between(number_of_signatores, 255)
-      )
-    } else {
-      fuzz.int_between(1, number_of_signatores)
-    }
-  )
-  let spending_limit <- and_then(
-    if list.has(fail_points, @"spending_limit") {
-      fuzz.either(
-        fuzz.int_between((-1) * correct_spending_limit, -1),
-        fuzz.int_between(correct_spending_limit + 1, 255)
-      )
-    } else {
-      fuzz.constant(correct_spending_limit)
-    }
-  )
+  let signer_threshold <-
+    and_then(
+      if list.has(fail_points, @"number_of_signatores") {
+        fuzz.either(
+          fuzz.int_between(-255, 0),
+          fuzz.int_between(number_of_signatores, 255),
+        )
+      } else {
+        fuzz.int_between(1, number_of_signatores)
+      },
+    )
+  let spending_limit <-
+    and_then(
+      if list.has(fail_points, @"spending_limit") {
+        fuzz.either(
+          fuzz.int_between(-1 * correct_spending_limit, -1),
+          fuzz.int_between(correct_spending_limit + 1, 255),
+        )
+      } else {
+        fuzz.constant(correct_spending_limit)
+      },
+    )
 
   fuzz.constant(
     MultisigDatum {
@@ -175,17 +176,13 @@ pub fn datum_fail_fuzzer(
 pub fn init_fail_points_fuzzer() -> Fuzzer<List<String>> {
   fuzz.set_between(
     fuzz.map(
-      fuzz.pick([
-      @"number_of_signatores",
-      @"spending_limit",
-
+      fuzz.pick([@"number_of_signatores", @"spending_limit"]),
       // @"multisig_nft_value",
       // @"signers_transaction",
-      ]),
-      (fn ((_a, b)) {b} )
+      fn((_a, b)) { b },
     ),
     1,
-    2
+    2,
   )
 }
 
@@ -219,7 +216,10 @@ pub fn init_multisig_fail_fuzzer(
 
   let spending_limit <- and_then(fuzz.int_between(0, locked_lovelace_count))
   let number_of_signatores <- and_then(number_of_signatores_fuzzer())
-  let datum <- and_then(datum_fail_fuzzer(number_of_signatores, spending_limit, fail_points))
+  let datum <-
+    and_then(
+      datum_fail_fuzzer(number_of_signatores, spending_limit, fail_points),
+    )
   let multisig_nft_value =
     add(zero, own_policy, multisig_token_name(input_output_ref), 1)
   let output =
@@ -289,7 +289,7 @@ pub fn end_multisig_fuzzer(
 
   let number_of_signatores <- and_then(number_of_signatores_fuzzer())
   let datum <-
-    and_then(datum_fuzzer(number_of_signatores, spending_limit, True))
+    and_then(datum_fuzzer(number_of_signatores, spending_limit))
   let output =
     Output {
       address: Address {
@@ -353,7 +353,7 @@ pub fn sign_multisig_fuzzer(
 
   let number_of_signatores <- and_then(number_of_signatores_fuzzer())
   let datum <-
-    and_then(datum_fuzzer(number_of_signatores, spending_limit, True))
+    and_then(datum_fuzzer(number_of_signatores, spending_limit))
   let input =
     Input {
       output_reference: input_output_ref,
@@ -432,7 +432,7 @@ pub fn update_multisig_fuzzer(
 
   let number_of_signatores <- and_then(number_of_signatores_fuzzer())
   let old_datum <-
-    and_then(datum_fuzzer(number_of_signatores, spending_limit, True))
+    and_then(datum_fuzzer(number_of_signatores, spending_limit))
   let input =
     Input {
       output_reference: input_output_ref,
@@ -445,7 +445,7 @@ pub fn update_multisig_fuzzer(
     }
 
   let updated_datum <-
-    and_then(datum_fuzzer(number_of_signatores, spending_limit, True))
+    and_then(datum_fuzzer(number_of_signatores, spending_limit))
   let output =
     Output {
       address: Address {
@@ -508,7 +508,7 @@ pub fn remove_multisig_fuzzer(
 
   let number_of_signatores <- and_then(number_of_signatores_fuzzer())
   let datum <-
-    and_then(datum_fuzzer(number_of_signatores, spending_limit, True))
+    and_then(datum_fuzzer(number_of_signatores, spending_limit))
   let input =
     Input {
       output_reference: input_output_ref,
