@@ -104,7 +104,11 @@ pub fn init_multisig_fuzzer(
       reference_script: None,
     }
 
-  let sorted_datum_signers = list.sort(datum.signers, bytearray.compare)
+  let extra_signers <- and_then(fuzz.list_at_most(
+    fuzz.bytearray_fixed(28),
+    3,
+  ))
+  let sorted_signers_with_extra = list.sort(list.concat(datum.signers, extra_signers), bytearray.compare)
 
   let transaction =
     Transaction {
@@ -116,7 +120,7 @@ pub fn init_multisig_fuzzer(
       certificates: [],
       withdrawals: [],
       validity_range: everything,
-      extra_signatories: sorted_datum_signers |> list.unique,
+      extra_signatories: sorted_signers_with_extra |> list.unique,
       redeemers: [],
       datums: dict.empty,
       id: tx_hash,
@@ -129,19 +133,17 @@ pub fn init_multisig_fuzzer(
   let out_idx = 0
 
   fuzz.constant((own_policy, input_output_ref, out_idx, transaction))
-  // TODO positive tests for other random outputs,
-  // Negative if there is own_policy present in them
 }
 
 pub fn datum_fail_fuzzer(
   number_of_signatores: Int,
-  correct_spending_limit: Int,
+  spending_limit: Int,
   fail_points: List<String>,
 ) -> Fuzzer<MultisigDatum> {
   let signers <- and_then(signatures_fuzzer(number_of_signatores))
   let signer_threshold <-
     and_then(
-      if list.has(fail_points, @"number_of_signatores") {
+      if list.has(fail_points, @"datum_number_of_signatores") {
         fuzz.either(
           fuzz.int_between(-255, 0),
           fuzz.int_between(number_of_signatores, 255),
@@ -150,21 +152,11 @@ pub fn datum_fail_fuzzer(
         fuzz.int_between(1, number_of_signatores)
       },
     )
-  let spending_limit <-
-    and_then(
-      if list.has(fail_points, @"spending_limit") {
-        fuzz.either(
-          fuzz.int_between(-1 * correct_spending_limit, -1),
-          fuzz.int_between(correct_spending_limit + 1, 255),
-        )
-      } else {
-        fuzz.constant(correct_spending_limit)
-      },
-    )
 
+  // We assume that there is no reason to check other data fields
   fuzz.constant(
     MultisigDatum {
-      signers,
+      signers: list.sort(signers, bytearray.compare),
       threshold: signer_threshold,
       fund_policy_id: ada_policy_id,
       fund_asset_name: ada_asset_name,
@@ -173,25 +165,47 @@ pub fn datum_fail_fuzzer(
   )
 }
 
+pub fn multisig_nft_fail_fuzzer(own_policy: PolicyId, input_output_ref: OutputReference, fail_points: List<String>) -> Fuzzer<Value> {
+  if list.has(fail_points, @"multisig_nft_amount") {
+    let amount <- and_then(fuzz.either(
+        fuzz.int_between(-255, 0),
+        fuzz.int_between(2, 255),
+      ))
+    fuzz.constant(add(zero, own_policy, multisig_token_name(input_output_ref), amount))
+  } else {
+    if list.has(fail_points, @"multisig_nft_token_name") {
+        let OutputReference { transaction_id: prev_tx_hash, output_index: _idx } = input_output_ref
+        let tx_hash <- and_then(fuzz.bytearray_fixed(28))
+        let new_input_output_ref =
+          OutputReference { transaction_id: tx_hash, output_index: 1 }
+      fuzz.constant(add(zero, own_policy, multisig_token_name(new_input_output_ref), 1))
+    } else {
+      fuzz.constant(add(zero, own_policy, multisig_token_name(input_output_ref), 1))
+    }
+  }
+}
+
 pub fn init_fail_points_fuzzer() -> Fuzzer<List<String>> {
   fuzz.set_between(
     fuzz.map(
-      fuzz.pick([@"number_of_signatores", @"spending_limit"]),
-      // @"multisig_nft_value",
-      // @"signers_transaction",
+      fuzz.pick([
+        @"datum_number_of_signatores",
+        @"multisig_nft_amount",
+        @"multisig_nft_token_name",
+        @"lost_signers",
+      ]),
       fn((_a, b)) { b },
     ),
     1,
-    2,
+    4,
   )
 }
 
 pub fn init_multisig_fail_fuzzer(
   min_lovelaces: Int,
   max_lovelaces: Int,
-) -> Fuzzer<(PolicyId, OutputReference, Int, Transaction)> {
+) -> Fuzzer<(PolicyId, OutputReference, Int, Transaction, List<String>)> {
   let fail_points <- and_then(init_fail_points_fuzzer())
-  trace @"fail_points": fail_points
 
   let own_policy <- and_then(fuzz.bytearray_fixed(28))
   let tx_hash <- and_then(fuzz.bytearray_fixed(28))
@@ -220,8 +234,8 @@ pub fn init_multisig_fail_fuzzer(
     and_then(
       datum_fail_fuzzer(number_of_signatores, spending_limit, fail_points),
     )
-  let multisig_nft_value =
-    add(zero, own_policy, multisig_token_name(input_output_ref), 1)
+  let multisig_nft_value <- and_then(multisig_nft_fail_fuzzer(own_policy, input_output_ref, fail_points))
+
   let output =
     Output {
       address: Address {
@@ -233,6 +247,14 @@ pub fn init_multisig_fail_fuzzer(
       reference_script: None,
     }
 
+  let sorted_signers = if (list.has(fail_points, @"lost_signers")) {
+    expect Some(part_of_signers) = list.tail(datum.signers)
+    list.sort(part_of_signers, bytearray.compare)
+
+  } else {
+    list.sort(datum.signers, bytearray.compare)
+  }
+
   let transaction =
     Transaction {
       inputs: [input],
@@ -243,7 +265,7 @@ pub fn init_multisig_fail_fuzzer(
       certificates: [],
       withdrawals: [],
       validity_range: everything,
-      extra_signatories: datum.signers,
+      extra_signatories: sorted_signers |> list.unique,
       redeemers: [],
       datums: dict.empty,
       id: tx_hash,
@@ -255,9 +277,7 @@ pub fn init_multisig_fail_fuzzer(
 
   let out_idx = 0
 
-  fuzz.constant((own_policy, input_output_ref, out_idx, transaction))
-  // TODO positive tests for other random outputs,
-  // Negative if there is own_policy present in them
+  fuzz.constant((own_policy, input_output_ref, out_idx, transaction, fail_points))
 }
 
 pub fn end_multisig_fuzzer(
@@ -419,7 +439,6 @@ pub fn update_multisig_fuzzer(
 ) -> Fuzzer<(MultisigDatum, OutputReference, Int, Int, Transaction)> {
   let own_policy <- and_then(fuzz.bytearray_fixed(28))
   let tx_hash <- and_then(fuzz.bytearray_fixed(28))
-  // TODO check if this is correct
   let input_output_ref =
     OutputReference { transaction_id: tx_hash, output_index: 1 }
 
@@ -495,7 +514,6 @@ pub fn remove_multisig_fuzzer(
   let recipient_key_hash <- and_then(fuzz.bytearray_fixed(28))
   let tx_hash <- and_then(fuzz.bytearray_fixed(28))
 
-  // TODO check if this is correct
   let input_output_ref =
     OutputReference { transaction_id: tx_hash, output_index: 1 }
 

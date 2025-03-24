@@ -21,8 +21,7 @@ test succeed_init_multisig_fuzzy(
 test fail_init_multisig_fuzzy(
   test_values via tests.init_multisig_fail_fuzzer(1_000_000, 1_000_000_000),
 ) fail {
-  let (own_policy, own_ref, idx, transaction) = test_values
-
+  let (own_policy, own_ref, idx, transaction, _fail_points) = test_values
   validate_init(own_policy, own_ref, idx, transaction)
 }
 
