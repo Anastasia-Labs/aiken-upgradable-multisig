@@ -32,6 +32,13 @@ test succeed_end_multisig_fuzzy(
   validate_end(own_policy, idx, transaction)
 }
 
+test fail_end_multisig_fuzzy(
+  test_values via tests.end_multisig_fail_fuzzer(1_000_000, 1_000_000_000),
+) fail {
+  let (own_policy, idx, transaction, _fail_points) = test_values
+  validate_end(own_policy, idx, transaction)
+}
+
 test succeed_sign_multisig_fuzzy(
   test_values via tests.sign_multisig_fuzzer(1_000_000, 1_000_000_000),
 ) {
