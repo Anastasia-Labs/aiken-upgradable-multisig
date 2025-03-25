@@ -1,10 +1,11 @@
 use aiken/builtin
+use aiken/cbor
 use aiken/collection/list
-use aiken/crypto.{Blake2b_256, Hash, VerificationKeyHash, sha3_256}
+use aiken/crypto.{VerificationKeyHash, blake2b_256}
 use aiken/primitive/bytearray
 use aiken_scott_utils/list as scott_list
 use cardano/assets.{AssetName, PolicyId, quantity_of}
-use cardano/transaction.{Input, Output, OutputReference, Transaction}
+use cardano/transaction.{Input, Output, OutputReference}
 use upgradable_multisig/types.{MultisigDatum, PubKeyHash}
 
 pub fn get_input_by_token(
@@ -86,14 +87,12 @@ pub fn signed_within_threshold(
 /// ```aiken
 /// values.unique_token_name(tx_id, tx_idx, cip68.prefix_333)
 /// ```
-pub fn unique_token_name(
-  out_ref: OutputReference,
-) -> AssetName {
+pub fn unique_token_name(out_ref: OutputReference) -> AssetName {
   out_ref |> cbor.serialise |> blake2b_256
 }
 
 // TODO: Find out whether token name is 28 or 32 bytes.
 pub fn multisig_token_name(own_ref: OutputReference) -> ByteArray {
   // let sig_tkn_name =
-  unique_token_name(own_ref.transaction_id, own_ref.output_index, "multisig")
+  unique_token_name(own_ref)
 }
