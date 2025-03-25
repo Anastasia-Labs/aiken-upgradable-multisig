@@ -165,7 +165,7 @@ pub fn validate_update(
       expect [Pair(multisig_token_name, 1)] = dict.to_pairs(sig_token)
 
       let in_token_correct =
-        (quantity_of(in_value, own_policy, multisig_token_name) == 1)?
+        quantity_of(in_value, own_policy, multisig_token_name) == 1
 
       expect [Pair(_, out_ada), ..out_tl] =
         out_value |> assets.to_dict |> dict.to_pairs
