@@ -555,34 +555,6 @@ test fail_sign_insufficient_signatures() fail {
   validate_sign(datum, init_output_ref, in_idx, out_idx, wrong_transaction)
 }
 
-// test fail_sign_wrong_spend_limit() fail {
-//   let (
-//     datum,
-//     init_output_ref,
-//     in_idx,
-//     out_idx,
-//     multisig_token_name,
-//     transaction,
-//   ) = base_sign()
-
-//   let own_policy = tests.test_policy()
-//   let multisig_out_value = add(zero, own_policy, multisig_token_name, 1)
-//   let own_output =
-//     tests.test_utxo_02(own_policy, multisig_out_value, 1_000_000_000_000, datum)
-
-//   let recipient_output =
-//     tests.test_user_utxo(
-//       tests.test_withdraw_pkh(),
-//       from_lovelace(1_000_000_000_000),
-//       NoDatum,
-//     )
-
-//   let wrong_transaction =
-//     Transaction { ..transaction, outputs: [own_output, recipient_output] }
-
-//   validate_sign(datum, init_output_ref, in_idx, out_idx, wrong_transaction)
-// }
-
 test success_update_threshold() {
   let (
     datum,

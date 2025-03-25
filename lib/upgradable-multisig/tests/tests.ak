@@ -197,7 +197,7 @@ pub fn burn_multisig_fail_fuzzer(
   if list.has(fail_points, @"multisig_nft_amount_burn") {
     let amount <-
       and_then(
-        fuzz.either(fuzz.int_between(-255, -1), fuzz.int_between(0, 255)),
+        fuzz.either(fuzz.int_between(-255, -2), fuzz.int_between(0, 255)),
       )
     fuzz.constant(
       add(zero, own_policy, multisig_token_name(input_output_ref), amount),
@@ -315,7 +315,7 @@ pub fn init_multisig_fail_fuzzer(
       certificates: [],
       withdrawals: [],
       validity_range: everything,
-      extra_signatories: sorted_signers |> list.unique,
+      extra_signatories: sorted_signers |> list.unique(),
       redeemers: [],
       datums: dict.empty,
       id: tx_hash,
@@ -530,7 +530,7 @@ pub fn sign_unlock_funds_multisig_fuzzer(
         stake_credential: Some(Inline(VerificationKey(stake_key_hash_1))),
       },
       value: unlocked_lovelace_value,
-      datum: InlineDatum(datum),
+      datum:  NoDatum,
       reference_script: None,
     }
 
@@ -576,9 +576,7 @@ pub fn sign_lock_funds_multisig_fuzzer(
   max_lovelaces: Int,
 ) -> Fuzzer<(MultisigDatum, OutputReference, Int, Int, Transaction)> {
   let own_policy <- and_then(fuzz.bytearray_fixed(28))
-  let replenish_key_hash <- and_then(fuzz.bytearray_fixed(28))
-  let stake_key_hash_1 <- and_then(fuzz.bytearray_fixed(28))
-  let stake_key_hash_2 <- and_then(fuzz.bytearray_fixed(28))
+  let stake_key_hash <- and_then(fuzz.bytearray_fixed(28))
 
   let tx_hash_1 <- and_then(fuzz.bytearray_fixed(28))
   let input_output_ref_1 =
@@ -617,7 +615,7 @@ pub fn sign_lock_funds_multisig_fuzzer(
       output: Output {
         address: Address(Script(own_policy), None),
         value: replenish_lovelace_value,
-        datum: InlineDatum(datum),
+        datum: NoDatum,
         reference_script: None,
       },
     }
@@ -626,7 +624,7 @@ pub fn sign_lock_funds_multisig_fuzzer(
     Output {
       address: Address {
         payment_credential: Script(own_policy),
-        stake_credential: Some(Inline(VerificationKey(stake_key_hash_2))),
+        stake_credential: Some(Inline(VerificationKey(stake_key_hash))),
       },
       value: merge(output_lovelace_value, multisig_nft_value),
       datum: InlineDatum(datum),
@@ -665,16 +663,16 @@ pub fn sign_fail_points_fuzzer() -> Fuzzer<List<String>> {
     fuzz.map(
       fuzz.pick([
         @"over_limit",
-
-        // @"rest_lovelace_value",
+        @"datum_changed",
         // @"multisig_nft_amount_mint",
         // @"multisig_nft_token_name",
-        // @"lost_signers",
+
+        @"lost_signers",
         ]),
       fn((_a, b)) { b },
     ),
     1,
-    1,
+    3,
   )
 }
 
@@ -712,7 +710,7 @@ pub fn sign_multisig_fail_fuzzer(
 
   let number_of_signatores <- and_then(number_of_signatores_fuzzer())
   let datum <- and_then(datum_fuzzer(number_of_signatores, spending_limit))
-  let input =
+  let own_input =
     Input {
       output_reference: input_output_ref,
       output: Output {
@@ -734,6 +732,12 @@ pub fn sign_multisig_fail_fuzzer(
       reference_script: None,
     }
 
+  let own_output_datum <- and_then( if list.has(fail_points, @"datum_changed") {
+    datum_fuzzer(number_of_signatores, spending_limit)
+  } else {
+    fuzz.constant(datum)
+  })
+
   let own_output =
     Output {
       address: Address {
@@ -741,13 +745,17 @@ pub fn sign_multisig_fail_fuzzer(
         stake_credential: Some(Inline(VerificationKey(stake_key_hash_2))),
       },
       value: merge(rest_lovelace_value, multisig_nft_value),
-      datum: InlineDatum(datum),
+      datum: InlineDatum(own_output_datum),
       reference_script: None,
     }
 
+  let minimal_allowed_signers_subset = list.take(datum.signers |> list.unique(), datum.threshold)
+  let sorted_signers <-
+    and_then(lose_signers_fuzzer(minimal_allowed_signers_subset, fail_points))
+
   let transaction =
     Transaction {
-      inputs: [input],
+      inputs: [own_input],
       reference_inputs: [],
       outputs: [own_output, recipient_output],
       fee: 0,
@@ -755,7 +763,7 @@ pub fn sign_multisig_fail_fuzzer(
       certificates: [],
       withdrawals: [],
       validity_range: everything,
-      extra_signatories: datum.signers,
+      extra_signatories: sorted_signers |> list.unique(),
       redeemers: [],
       datums: dict.empty,
       id: tx_hash,
