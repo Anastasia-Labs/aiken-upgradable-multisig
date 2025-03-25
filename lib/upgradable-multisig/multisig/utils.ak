@@ -87,14 +87,9 @@ pub fn signed_within_threshold(
 /// values.unique_token_name(tx_id, tx_idx, cip68.prefix_333)
 /// ```
 pub fn unique_token_name(
-  txid: Hash<Blake2b_256, Transaction>,
-  idx: Int,
-  prefix: ByteArray,
+  out_ref: OutputReference,
 ) -> AssetName {
-  let txid_hash: ByteArray = sha3_256(txid)
-  let prepend_index: ByteArray = bytearray.push(txid_hash, idx)
-  let prepend_prefix: ByteArray = bytearray.concat(prefix, prepend_index)
-  bytearray.slice(prepend_prefix, 0, 31)
+  out_ref |> cbor.serialise |> blake2b_256
 }
 
 // TODO: Find out whether token name is 28 or 32 bytes.
