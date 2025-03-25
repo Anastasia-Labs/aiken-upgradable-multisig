@@ -89,6 +89,13 @@ test succeed_remove_multisig_fuzzy(
   validate_remove(datum, input_output_ref, in_idx, transaction)
 }
 
+test fail_remove_multisig_fuzzy(
+  test_values via tests.remove_multisig_fail_fuzzer(1_000_000, 1_000_000_000),
+) fail {
+  let (datum, input_output_ref, in_idx, transaction, _fail_points) = test_values
+  validate_remove(datum, input_output_ref, in_idx, transaction)
+}
+
 fn base_init() {
   let own_policy = tests.test_policy()
 

@@ -1045,6 +1045,104 @@ pub fn remove_multisig_fuzzer(
   fuzz.constant((datum, input_output_ref, in_idx, transaction))
 }
 
+pub fn remove_fail_points_fuzzer() -> Fuzzer<List<String>> {
+  fuzz.set_between(
+    fuzz.map(
+      fuzz.pick(
+        [
+          @"multisig_nft_amount_burn",
+          @"multisig_nft_token_name", @"lost_signers",
+        ],
+      ),
+      fn((_a, b)) { b },
+    ),
+    1,
+    3,
+  )
+}
+
+pub fn remove_multisig_fail_fuzzer(
+  min_lovelaces: Int,
+  max_lovelaces: Int,
+) -> Fuzzer<(MultisigDatum, OutputReference, Int, Transaction, List<String>)> {
+  let fail_points <- and_then(remove_fail_points_fuzzer())
+  let own_policy <- and_then(fuzz.bytearray_fixed(28))
+  let stake_key_hash <- and_then(fuzz.bytearray_fixed(28))
+  let recipient_key_hash <- and_then(fuzz.bytearray_fixed(28))
+  let tx_hash <- and_then(fuzz.bytearray_fixed(28))
+
+  let input_output_ref =
+    OutputReference { transaction_id: tx_hash, output_index: 1 }
+
+  let (locked_lovelace_value, locked_lovelace_count) <-
+    and_then(lovelace_value_fuzzer(min_lovelaces, max_lovelaces))
+  let spending_limit <- and_then(fuzz.int_between(0, locked_lovelace_count))
+
+  let multisig_nft_value =
+    add(zero, own_policy, multisig_token_name(input_output_ref), 1)
+
+  let number_of_signatores <- and_then(number_of_signatores_fuzzer())
+  let datum <- and_then(datum_fuzzer(number_of_signatores, spending_limit))
+  let input =
+    Input {
+      output_reference: input_output_ref,
+      output: Output {
+        address: Address(Script(own_policy), None),
+        value: merge(locked_lovelace_value, multisig_nft_value),
+        datum: InlineDatum(datum),
+        reference_script: None,
+      },
+    }
+
+  let output =
+    Output {
+      address: Address {
+        payment_credential: VerificationKey(recipient_key_hash),
+        stake_credential: Some(Inline(VerificationKey(stake_key_hash))),
+      },
+      value: locked_lovelace_value,
+      datum: NoDatum,
+      reference_script: None,
+    }
+
+  let burn_multisig_nft_value <-
+    and_then(
+      burn_multisig_fail_fuzzer(own_policy, input_output_ref, fail_points),
+    )
+
+  let minimal_allowed_signers_subset =
+    list.take(
+      datum.signers |> list.unique(),
+      datum.threshold,
+    )
+  let sorted_signers <-
+    and_then(lose_signers_fuzzer(minimal_allowed_signers_subset, fail_points))
+
+  let transaction =
+    Transaction {
+      inputs: [input],
+      reference_inputs: [],
+      outputs: [output],
+      fee: 0,
+      mint: burn_multisig_nft_value,
+      certificates: [],
+      withdrawals: [],
+      validity_range: everything,
+      extra_signatories: sorted_signers,
+      redeemers: [],
+      datums: dict.empty,
+      id: tx_hash,
+      votes: [],
+      proposal_procedures: [],
+      current_treasury_amount: None,
+      treasury_donation: None,
+    }
+
+  let in_idx = 0
+
+  fuzz.constant((datum, input_output_ref, in_idx, transaction, fail_points))
+}
+
 pub fn test_224_01() {
   bytearray.take(blake2b_256(#"01"), 28)
 }
