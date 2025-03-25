@@ -1050,8 +1050,8 @@ pub fn remove_fail_points_fuzzer() -> Fuzzer<List<String>> {
     fuzz.map(
       fuzz.pick(
         [
-          @"multisig_nft_amount_burn",
-          @"multisig_nft_token_name", @"lost_signers",
+          @"multisig_nft_amount_burn", @"multisig_nft_token_name",
+          @"lost_signers",
         ],
       ),
       fn((_a, b)) { b },
@@ -1111,10 +1111,7 @@ pub fn remove_multisig_fail_fuzzer(
     )
 
   let minimal_allowed_signers_subset =
-    list.take(
-      datum.signers |> list.unique(),
-      datum.threshold,
-    )
+    list.take(datum.signers |> list.unique(), datum.threshold)
   let sorted_signers <-
     and_then(lose_signers_fuzzer(minimal_allowed_signers_subset, fail_points))
 
