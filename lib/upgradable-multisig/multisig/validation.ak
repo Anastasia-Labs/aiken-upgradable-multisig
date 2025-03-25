@@ -104,7 +104,7 @@ pub fn validate_sign(
         quantity_of(in_value, datum.fund_policy_id, datum.fund_asset_name)
       let out_funds =
         quantity_of(out_value, datum.fund_policy_id, datum.fund_asset_name)
-      let spending_limit_followed = out_funds - in_funds <= datum.spending_limit
+      let spending_limit_followed = in_funds - out_funds <= datum.spending_limit
 
       and {
         enough_signers?,

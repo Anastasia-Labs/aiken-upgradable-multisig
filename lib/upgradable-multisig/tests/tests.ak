@@ -486,7 +486,7 @@ pub fn end_multisig_fail_fuzzer(
   fuzz.constant((own_policy, out_idx, transaction, fail_points))
 }
 
-pub fn sign_multisig_fuzzer(
+pub fn sign_unlock_funds_multisig_fuzzer(
   min_lovelaces: Int,
   max_lovelaces: Int,
 ) -> Fuzzer<(MultisigDatum, OutputReference, Int, Int, Transaction)> {
@@ -506,6 +506,206 @@ pub fn sign_multisig_fuzzer(
     and_then(lovelace_value_fuzzer(0, spending_limit))
   let rest_lovelace_value =
     assets.from_lovelace(locked_lovelace_count - unlocked_lovelace_count)
+
+  let multisig_nft_value =
+    add(zero, own_policy, multisig_token_name(input_output_ref), 1)
+
+  let number_of_signatores <- and_then(number_of_signatores_fuzzer())
+  let datum <- and_then(datum_fuzzer(number_of_signatores, spending_limit))
+  let own_input =
+    Input {
+      output_reference: input_output_ref,
+      output: Output {
+        address: Address(Script(own_policy), None),
+        value: merge(locked_lovelace_value, multisig_nft_value),
+        datum: InlineDatum(datum),
+        reference_script: None,
+      },
+    }
+
+  let recipient_output =
+    Output {
+      address: Address {
+        payment_credential: VerificationKey(recipient_key_hash),
+        stake_credential: Some(Inline(VerificationKey(stake_key_hash_1))),
+      },
+      value: unlocked_lovelace_value,
+      datum: InlineDatum(datum),
+      reference_script: None,
+    }
+
+  let own_output =
+    Output {
+      address: Address {
+        payment_credential: Script(own_policy),
+        stake_credential: Some(Inline(VerificationKey(stake_key_hash_2))),
+      },
+      value: merge(rest_lovelace_value, multisig_nft_value),
+      datum: InlineDatum(datum),
+      reference_script: None,
+    }
+
+  let transaction =
+    Transaction {
+      inputs: [own_input],
+      reference_inputs: [],
+      outputs: [own_output, recipient_output],
+      fee: 0,
+      mint: zero,
+      certificates: [],
+      withdrawals: [],
+      validity_range: everything,
+      extra_signatories: datum.signers,
+      redeemers: [],
+      datums: dict.empty,
+      id: tx_hash,
+      votes: [],
+      proposal_procedures: [],
+      current_treasury_amount: None,
+      treasury_donation: None,
+    }
+
+  let in_idx = 0
+  let out_idx = 0
+
+  fuzz.constant((datum, input_output_ref, in_idx, out_idx, transaction))
+}
+
+pub fn sign_lock_funds_multisig_fuzzer(
+  min_lovelaces: Int,
+  max_lovelaces: Int,
+) -> Fuzzer<(MultisigDatum, OutputReference, Int, Int, Transaction)> {
+  let own_policy <- and_then(fuzz.bytearray_fixed(28))
+  let replenish_key_hash <- and_then(fuzz.bytearray_fixed(28))
+  let stake_key_hash_1 <- and_then(fuzz.bytearray_fixed(28))
+  let stake_key_hash_2 <- and_then(fuzz.bytearray_fixed(28))
+
+  let tx_hash_1 <- and_then(fuzz.bytearray_fixed(28))
+  let input_output_ref_1 =
+    OutputReference { transaction_id: tx_hash_1, output_index: 1 }
+  let tx_hash_2 <- and_then(fuzz.bytearray_fixed(28))
+  let input_output_ref_2 =
+    OutputReference { transaction_id: tx_hash_2, output_index: 1 }
+
+  let (locked_lovelace_value, locked_lovelace_count) <-
+    and_then(lovelace_value_fuzzer(min_lovelaces, max_lovelaces))
+  let spending_limit <- and_then(fuzz.int_between(0, locked_lovelace_count))
+  let (replenish_lovelace_value, replenish_lovelace_count) <-
+    and_then(lovelace_value_fuzzer(0, spending_limit))
+  let output_lovelace_value =
+    assets.from_lovelace(locked_lovelace_count + replenish_lovelace_count)
+
+  let multisig_nft_value =
+    add(zero, own_policy, multisig_token_name(input_output_ref_1), 1)
+
+  let number_of_signatores <- and_then(number_of_signatores_fuzzer())
+  let datum <- and_then(datum_fuzzer(number_of_signatores, spending_limit))
+  let own_input =
+    Input {
+      output_reference: input_output_ref_1,
+      output: Output {
+        address: Address(Script(own_policy), None),
+        value: merge(locked_lovelace_value, multisig_nft_value),
+        datum: InlineDatum(datum),
+        reference_script: None,
+      },
+    }
+
+  let replenish_input =
+    Input {
+      output_reference: input_output_ref_2,
+      output: Output {
+        address: Address(Script(own_policy), None),
+        value: replenish_lovelace_value,
+        datum: InlineDatum(datum),
+        reference_script: None,
+      },
+    }
+
+  let own_output =
+    Output {
+      address: Address {
+        payment_credential: Script(own_policy),
+        stake_credential: Some(Inline(VerificationKey(stake_key_hash_2))),
+      },
+      value: merge(output_lovelace_value, multisig_nft_value),
+      datum: InlineDatum(datum),
+      reference_script: None,
+    }
+
+  let transaction =
+    Transaction {
+      inputs: [own_input, replenish_input],
+      reference_inputs: [],
+      outputs: [own_output],
+      fee: 0,
+      mint: zero,
+      certificates: [],
+      withdrawals: [],
+      validity_range: everything,
+      extra_signatories: datum.signers,
+      redeemers: [],
+      datums: dict.empty,
+      id: tx_hash_1,
+      votes: [],
+      proposal_procedures: [],
+      current_treasury_amount: None,
+      treasury_donation: None,
+    }
+
+  let in_idx = 0
+  let out_idx = 0
+
+  fuzz.constant((datum, input_output_ref_1, in_idx, out_idx, transaction))
+}
+
+
+pub fn sign_fail_points_fuzzer() -> Fuzzer<List<String>> {
+  fuzz.set_between(
+    fuzz.map(
+      fuzz.pick([
+        @"over_limit",
+
+        // @"rest_lovelace_value",
+        // @"multisig_nft_amount_mint",
+        // @"multisig_nft_token_name",
+        // @"lost_signers",
+        ]),
+      fn((_a, b)) { b },
+    ),
+    1,
+    1,
+  )
+}
+
+pub fn sign_multisig_fail_fuzzer(
+  min_lovelaces: Int,
+  max_lovelaces: Int,
+) -> Fuzzer<(MultisigDatum, OutputReference, Int, Int, Transaction, List<String>)> {
+  let fail_points <- and_then(sign_fail_points_fuzzer())
+
+  let own_policy <- and_then(fuzz.bytearray_fixed(28))
+  let stake_key_hash_1 <- and_then(fuzz.bytearray_fixed(28))
+  let stake_key_hash_2 <- and_then(fuzz.bytearray_fixed(28))
+  let recipient_key_hash <- and_then(fuzz.bytearray_fixed(28))
+
+  let tx_hash <- and_then(fuzz.bytearray_fixed(28))
+  let input_output_ref =
+    OutputReference { transaction_id: tx_hash, output_index: 1 }
+
+  let (locked_lovelace_value, locked_lovelace_count) <-
+    and_then(lovelace_value_fuzzer(min_lovelaces, max_lovelaces))
+  let spending_limit <- and_then(fuzz.int_between(1, locked_lovelace_count))
+
+  let (unlocked_lovelace_value, unlocked_lovelace_count) <-
+    and_then (if (list.has(fail_points, @"over_limit")) {
+      lovelace_value_fuzzer(spending_limit + 1, 2 * spending_limit)
+    } else {
+      lovelace_value_fuzzer(0, spending_limit)
+    })
+
+  let rest_lovelace_value <-
+    and_then(fuzz.constant(assets.from_lovelace(locked_lovelace_count - unlocked_lovelace_count)))
 
   let multisig_nft_value =
     add(zero, own_policy, multisig_token_name(input_output_ref), 1)
@@ -568,8 +768,9 @@ pub fn sign_multisig_fuzzer(
   let in_idx = 0
   let out_idx = 0
 
-  fuzz.constant((datum, input_output_ref, in_idx, out_idx, transaction))
+  fuzz.constant((datum, input_output_ref, in_idx, out_idx, transaction, fail_points))
 }
+
 
 pub fn update_multisig_fuzzer(
   min_lovelaces: Int,
@@ -710,17 +911,14 @@ pub fn remove_multisig_fuzzer(
   fuzz.constant((datum, input_output_ref, in_idx, transaction))
 }
 
-// Generate a bytearray with blake2b_256
 pub fn test_224_01() {
   bytearray.take(blake2b_256(#"01"), 28)
 }
 
-// Generate a bytearray with blake2b_256
 pub fn test_224_02() {
   bytearray.take(blake2b_256(#"02"), 28)
 }
 
-// Generate a bytearray with blake2b_256
 pub fn test_224_03() {
   bytearray.take(blake2b_256(#"03"), 28)
 }
@@ -741,7 +939,6 @@ pub fn test_224_07() {
   bytearray.take(blake2b_256(#"07"), 28)
 }
 
-// Generate a bytearray with blake2b_256
 pub fn test_policy() -> PolicyId {
   bytearray.take(blake2b_256(#"07"), 28)
 }
@@ -796,7 +993,6 @@ pub fn test_context_input_02(output_ref, own_cs, minted_value, datum) {
   }
 }
 
-// Create a UTxO
 pub fn test_utxo_02(own_cs, minted_value, lovelace, datum) {
   Output {
     address: Address {
