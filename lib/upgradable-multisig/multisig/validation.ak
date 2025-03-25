@@ -178,7 +178,6 @@ pub fn validate_update(
 
       let out_ada_correct = out_amount >= in_amount
 
-      // Use the Filter function to filter by own_policy to ensure only one output from the contract
       let own_outputs =
         list.filter(
           tx.outputs,
