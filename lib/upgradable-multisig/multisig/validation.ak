@@ -171,7 +171,6 @@ pub fn validate_update(
         out_value |> assets.to_dict |> dict.to_pairs
       expect [Pair(_, in_ada), ..in_tl] =
         in_value |> assets.to_dict |> dict.to_pairs
-      // Add without lovelace in check.
       let out_value_unchanged = out_tl == in_tl
       expect [Pair(_, out_amount), ..] = dict.to_pairs(out_ada)
       expect [Pair(_, in_amount), ..] = dict.to_pairs(in_ada)
