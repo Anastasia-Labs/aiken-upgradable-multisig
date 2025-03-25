@@ -662,17 +662,14 @@ pub fn sign_fail_points_fuzzer() -> Fuzzer<List<String>> {
     fuzz.map(
       fuzz.pick(
         [
-          @"over_limit", @"datum_changed",
-          // @"multisig_nft_amount_mint",
-          // @"multisig_nft_token_name",
-
-          @"lost_signers",
+          @"over_limit", @"datum_changed", @"multisig_nft_amount_mint",
+          @"multisig_nft_token_name", @"lost_signers",
         ],
       ),
       fn((_a, b)) { b },
     ),
     1,
-    3,
+    5,
   )
 }
 
@@ -749,13 +746,18 @@ pub fn sign_multisig_fail_fuzzer(
       },
     )
 
+  let own_output_multisig_nft_value <-
+    and_then(
+      mint_multisig_fail_fuzzer(own_policy, input_output_ref, fail_points),
+    )
+
   let own_output =
     Output {
       address: Address {
         payment_credential: Script(own_policy),
         stake_credential: Some(Inline(VerificationKey(stake_key_hash_2))),
       },
-      value: merge(rest_lovelace_value, multisig_nft_value),
+      value: merge(rest_lovelace_value, own_output_multisig_nft_value),
       datum: InlineDatum(own_output_datum),
       reference_script: None,
     }
