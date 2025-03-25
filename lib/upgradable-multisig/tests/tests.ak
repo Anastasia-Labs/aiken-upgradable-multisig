@@ -871,9 +871,7 @@ pub fn update_fail_points_fuzzer() -> Fuzzer<List<String>> {
     fuzz.map(
       fuzz.pick(
         [
-          @"multisig_nft_amount_mint",
-          @"multisig_nft_token_name",
-          @"lost_funds",
+          @"multisig_nft_amount_mint", @"multisig_nft_token_name", @"lost_funds",
           @"lost_signers",
         ],
       ),
@@ -887,7 +885,9 @@ pub fn update_fail_points_fuzzer() -> Fuzzer<List<String>> {
 pub fn update_multisig_fail_fuzzer(
   min_lovelaces: Int,
   max_lovelaces: Int,
-) -> Fuzzer<(MultisigDatum, OutputReference, Int, Int, Transaction, List<String>)> {
+) -> Fuzzer<
+  (MultisigDatum, OutputReference, Int, Int, Transaction, List<String>),
+> {
   let fail_points <- and_then(update_fail_points_fuzzer())
   let own_policy <- and_then(fuzz.bytearray_fixed(28))
   let tx_hash <- and_then(fuzz.bytearray_fixed(28))
@@ -914,11 +914,14 @@ pub fn update_multisig_fail_fuzzer(
       },
     }
 
-  let (own_output_lovelace_value, _count) <- and_then(if (list.has(fail_points, @"lost_funds")) {
-    lovelace_value_fuzzer(0, locked_lovelace_count)
-  } else {
-    fuzz.constant((locked_lovelace_value, locked_lovelace_count))
-  })
+  let (own_output_lovelace_value, _count) <-
+    and_then(
+      if list.has(fail_points, @"lost_funds") {
+        lovelace_value_fuzzer(0, locked_lovelace_count)
+      } else {
+        fuzz.constant((locked_lovelace_value, locked_lovelace_count))
+      },
+    )
 
   let own_output_multisig_nft_value <-
     and_then(
@@ -939,7 +942,10 @@ pub fn update_multisig_fail_fuzzer(
     }
 
   let minimal_allowed_signers_subset =
-    list.take(list.concat(old_datum.signers, updated_datum.signers) |> list.unique(), old_datum.threshold)
+    list.take(
+      list.concat(old_datum.signers, updated_datum.signers) |> list.unique(),
+      old_datum.threshold,
+    )
   let sorted_signers <-
     and_then(lose_signers_fuzzer(minimal_allowed_signers_subset, fail_points))
 
@@ -966,7 +972,9 @@ pub fn update_multisig_fail_fuzzer(
   let in_idx = 0
   let out_idx = 0
 
-  fuzz.constant((old_datum, input_output_ref, in_idx, out_idx, transaction, fail_points))
+  fuzz.constant(
+    (old_datum, input_output_ref, in_idx, out_idx, transaction, fail_points),
+  )
 }
 
 pub fn remove_multisig_fuzzer(
