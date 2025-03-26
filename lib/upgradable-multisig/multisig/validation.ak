@@ -49,13 +49,9 @@ pub fn validate_init(
   }
 }
 
-pub fn validate_end(
-  own_policy: PolicyId,
-  tx: Transaction,
-) -> Bool {
+pub fn validate_end(own_policy: PolicyId, tx: Transaction) -> Bool {
   expect [input] = tx.inputs
-  let multisig_token_name =
-    utils.multisig_token_name(input.output_reference)
+  let multisig_token_name = utils.multisig_token_name(input.output_reference)
 
   quantity_of(tx.mint, own_policy, multisig_token_name) == -1
 }
