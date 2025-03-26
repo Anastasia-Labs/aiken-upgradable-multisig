@@ -130,7 +130,7 @@ pub fn init_multisig_fuzzer(
   let in_idx = 0
   let out_idx = 0
 
-  fuzz.constant((own_policy,in_idx, out_idx, transaction))
+  fuzz.constant((own_policy, in_idx, out_idx, transaction))
 }
 
 pub fn datum_fail_fuzzer(
@@ -329,9 +329,7 @@ pub fn init_multisig_fail_fuzzer(
   let in_idx = 0
   let out_idx = 0
 
-  fuzz.constant(
-    (own_policy, in_idx, out_idx, transaction, fail_points),
-  )
+  fuzz.constant((own_policy, in_idx, out_idx, transaction, fail_points))
 }
 
 pub fn end_multisig_fuzzer(

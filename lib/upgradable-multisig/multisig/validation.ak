@@ -19,10 +19,8 @@ pub fn validate_init(
 ) -> Bool {
   let Transaction { inputs, outputs, mint, extra_signatories, .. } = tx
 
-  expect Some(Input {
-    output_reference: input_output_ref,
-    ..
-  }) = list.at(inputs, input_index)
+  expect Some(Input { output_reference: input_output_ref, .. }) =
+    list.at(inputs, input_index)
 
   expect Some(Output {
     address: output_address,
