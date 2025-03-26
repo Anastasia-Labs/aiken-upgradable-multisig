@@ -221,7 +221,6 @@ pub fn validate_remove(
     output_reference: input_output_ref,
     output: Output {
       address: Address { payment_credential: Script(own_policy), .. },
-      value: in_value,
       ..
     },
   }) = inputs |> list.at(input_index)
@@ -230,14 +229,11 @@ pub fn validate_remove(
   let enough_signers = signed_within_threshold(datum, extra_signatories)
 
   let multisig_token_name = utils.multisig_token_name(input_output_ref)
-  let token_correct =
-    quantity_of(in_value, own_policy, multisig_token_name) == 1
   let token_destroyed = quantity_of(mint, own_policy, multisig_token_name) == -1
 
   and {
     reference_correct?,
     enough_signers?,
-    token_correct?,
     token_destroyed?,
   }
 }
