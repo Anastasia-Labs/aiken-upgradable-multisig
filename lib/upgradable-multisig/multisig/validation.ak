@@ -177,20 +177,6 @@ pub fn validate_update(
 
       let out_ada_correct = out_amount >= in_amount
 
-      let own_outputs =
-        list.filter(
-          tx.outputs,
-          fn(out) {
-            when
-              (out.address.payment_credential, out.address.stake_credential)
-            is {
-              (Script(policy), None) -> policy == own_policy
-              _ -> False
-            }
-          },
-        )
-      let single_output = list.length(own_outputs) == 1
-
       and {
         enough_signers?,
         out_address_correct?,
@@ -198,7 +184,6 @@ pub fn validate_update(
         in_token_correct?,
         out_value_unchanged?,
         out_ada_correct?,
-        single_output?,
       }
     },
     redeemer: Void,
