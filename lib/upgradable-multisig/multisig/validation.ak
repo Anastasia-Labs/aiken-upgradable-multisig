@@ -52,13 +52,10 @@ pub fn validate_end(
   tx: Transaction,
 ) -> Bool {
   expect Some(contract_input) = list.at(tx.inputs, input_index)
+  let multisig_token_name =
+    utils.multisig_token_name(contract_input.output_reference)
 
-  let sig_token = assets.tokens(contract_input.output.value, own_policy)
-  expect [Pair(multisig_token_name, 1)] = dict.to_pairs(sig_token)
-
-  expect [Pair(tkn, amt)] = dict.to_pairs(tokens(tx.mint, own_policy))
-
-  (tkn == multisig_token_name)? && (amt == -1)?
+  quantity_of(tx.mint, own_policy, multisig_token_name) == -1
 }
 
 pub fn validate_sign(
