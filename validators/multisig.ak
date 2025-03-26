@@ -11,8 +11,8 @@ use upgradable_multisig/types.{
 validator multisig {
   mint(r: MintMultisig, own_policy: PolicyId, tx: Transaction) {
     when r is {
-      InitMultiSig { output_reference, output_index } ->
-        validate_init(own_policy, output_reference, output_index, tx)
+      InitMultiSig { input_index, output_index } ->
+        validate_init(own_policy, input_index, output_index, tx)
 
       EndMultiSig { input_index } -> validate_end(own_policy, input_index, tx)
     }

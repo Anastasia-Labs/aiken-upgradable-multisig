@@ -13,11 +13,16 @@ use upgradable_multisig/types.{MultisigDatum}
 
 pub fn validate_init(
   own_policy: PolicyId,
-  own_ref: OutputReference,
+  input_index: Int,
   output_index: Int,
   tx: Transaction,
 ) -> Bool {
-  let Transaction { outputs, mint, extra_signatories, .. } = tx
+  let Transaction { inputs, outputs, mint, extra_signatories, .. } = tx
+
+  expect Some(Input {
+    output_reference: input_output_ref,
+    ..
+  }) = list.at(inputs, input_index)
 
   expect Some(Output {
     address: output_address,
@@ -28,7 +33,7 @@ pub fn validate_init(
 
   let address_correct = output_address.payment_credential == Script(own_policy)
 
-  let multisig_token_name = utils.multisig_token_name(own_ref)
+  let multisig_token_name = utils.multisig_token_name(input_output_ref)
 
   expect [Pair(tkn, 1)] = dict.to_pairs(tokens(mint, own_policy))
   let minted_token_correct = tkn == multisig_token_name

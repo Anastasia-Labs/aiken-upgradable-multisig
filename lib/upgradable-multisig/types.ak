@@ -1,6 +1,5 @@
 use aiken/crypto.{Blake2b_224, Hash, VerificationKey}
 use cardano/assets.{AssetName, PolicyId}
-use cardano/transaction.{OutputReference}
 
 pub type PubKeyHash =
   Hash<Blake2b_224, VerificationKey>
@@ -14,7 +13,7 @@ pub type MultisigDatum {
 }
 
 pub type MintMultisig {
-  InitMultiSig { output_reference: OutputReference, output_index: Int }
+  InitMultiSig { input_index: Int, output_index: Int }
   EndMultiSig { input_index: Int }
 }
 

@@ -64,7 +64,7 @@ pub fn datum_fuzzer(
 pub fn init_multisig_fuzzer(
   min_lovelaces: Int,
   max_lovelaces: Int,
-) -> Fuzzer<(PolicyId, OutputReference, Int, Transaction)> {
+) -> Fuzzer<(PolicyId, Int, Int, Transaction)> {
   let own_policy <- and_then(fuzz.bytearray_fixed(28))
   let tx_hash <- and_then(fuzz.bytearray_fixed(28))
   let input_output_ref =
@@ -127,9 +127,10 @@ pub fn init_multisig_fuzzer(
       treasury_donation: None,
     }
 
+  let in_idx = 0
   let out_idx = 0
 
-  fuzz.constant((own_policy, input_output_ref, out_idx, transaction))
+  fuzz.constant((own_policy,in_idx, out_idx, transaction))
 }
 
 pub fn datum_fail_fuzzer(
@@ -256,7 +257,7 @@ pub fn init_fail_points_fuzzer() -> Fuzzer<List<String>> {
 pub fn init_multisig_fail_fuzzer(
   min_lovelaces: Int,
   max_lovelaces: Int,
-) -> Fuzzer<(PolicyId, OutputReference, Int, Transaction, List<String>)> {
+) -> Fuzzer<(PolicyId, Int, Int, Transaction, List<String>)> {
   let fail_points <- and_then(init_fail_points_fuzzer())
 
   let own_policy <- and_then(fuzz.bytearray_fixed(28))
@@ -325,10 +326,11 @@ pub fn init_multisig_fail_fuzzer(
       treasury_donation: None,
     }
 
+  let in_idx = 0
   let out_idx = 0
 
   fuzz.constant(
-    (own_policy, input_output_ref, out_idx, transaction, fail_points),
+    (own_policy, in_idx, out_idx, transaction, fail_points),
   )
 }
 
