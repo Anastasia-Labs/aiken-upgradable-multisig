@@ -156,8 +156,8 @@ pub fn validate_update(
           extra_signatories,
         )
 
-      let sig_token = assets.tokens(in_value, own_policy)
-      expect [Pair(multisig_token_name, 1)] = dict.to_pairs(sig_token)
+      let multisig_token = assets.tokens(out_value, own_policy)
+      expect [Pair(multisig_token_name, 1)] = dict.to_pairs(multisig_token)
 
       let in_token_correct =
         quantity_of(in_value, own_policy, multisig_token_name) == 1
