@@ -14,7 +14,7 @@ pub type MultisigDatum {
 
 pub type MintMultisig {
   InitMultiSig { input_index: Int, output_index: Int }
-  EndMultiSig { input_index: Int }
+  EndMultiSig
 }
 
 pub type MultisigRedeemer {

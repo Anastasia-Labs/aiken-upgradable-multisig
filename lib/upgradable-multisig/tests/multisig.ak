@@ -21,15 +21,15 @@ test fail_init_multisig_fuzzy(
 test succeed_end_multisig_fuzzy(
   test_values via tests.end_multisig_fuzzer(1_000_000, 1_000_000_000),
 ) {
-  let (own_policy, idx, transaction) = test_values
-  validate_end(own_policy, idx, transaction)
+  let (own_policy, transaction) = test_values
+  validate_end(own_policy, transaction)
 }
 
 test fail_end_multisig_fuzzy(
   test_values via tests.end_multisig_fail_fuzzer(1_000_000, 1_000_000_000),
 ) fail {
-  let (own_policy, idx, transaction, _fail_points) = test_values
-  validate_end(own_policy, idx, transaction)
+  let (own_policy, transaction, _fail_points) = test_values
+  validate_end(own_policy, transaction)
 }
 
 test succeed_sign_unlock_multisig_fuzzy(

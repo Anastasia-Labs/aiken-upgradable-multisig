@@ -14,7 +14,7 @@ validator multisig {
       InitMultiSig { input_index, output_index } ->
         validate_init(own_policy, input_index, output_index, tx)
 
-      EndMultiSig { input_index } -> validate_end(own_policy, input_index, tx)
+      EndMultiSig -> validate_end(own_policy, tx)
     }
   }
 

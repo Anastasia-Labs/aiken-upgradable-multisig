@@ -51,12 +51,11 @@ pub fn validate_init(
 
 pub fn validate_end(
   own_policy: PolicyId,
-  input_index: Int,
   tx: Transaction,
 ) -> Bool {
-  expect Some(contract_input) = list.at(tx.inputs, input_index)
+  expect [input] = tx.inputs
   let multisig_token_name =
-    utils.multisig_token_name(contract_input.output_reference)
+    utils.multisig_token_name(input.output_reference)
 
   quantity_of(tx.mint, own_policy, multisig_token_name) == -1
 }
