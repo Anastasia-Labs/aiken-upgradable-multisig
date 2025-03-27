@@ -50,10 +50,7 @@ pub fn validate_init(
 }
 
 pub fn validate_end(own_policy: PolicyId, tx: Transaction) -> Bool {
-  expect [input] = tx.inputs
-  let multisig_token_name = utils.multisig_token_name(input.output_reference)
-
-  quantity_of(tx.mint, own_policy, multisig_token_name) == -1
+  list.all(dict.to_pairs(tokens(tx.mint, own_policy)), fn (Pair(_token_name, amount)) { amount == -1 })
 }
 
 pub fn validate_sign(
