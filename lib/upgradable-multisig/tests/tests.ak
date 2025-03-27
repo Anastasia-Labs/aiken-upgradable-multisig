@@ -401,10 +401,7 @@ pub fn end_multisig_fuzzer(
 
 pub fn end_fail_points_fuzzer() -> Fuzzer<List<String>> {
   fuzz.set_between(
-    fuzz.map(
-      fuzz.pick([@"multisig_nft_amount_burn"]),
-      fn((_a, b)) { b },
-    ),
+    fuzz.map(fuzz.pick([@"multisig_nft_amount_burn"]), fn((_a, b)) { b }),
     1,
     1,
   )
@@ -1044,12 +1041,7 @@ pub fn remove_multisig_fuzzer(
 pub fn remove_fail_points_fuzzer() -> Fuzzer<List<String>> {
   fuzz.set_between(
     fuzz.map(
-      fuzz.pick(
-        [
-          @"multisig_nft_amount_burn",
-          @"lost_signers",
-        ],
-      ),
+      fuzz.pick([@"multisig_nft_amount_burn", @"lost_signers"]),
       fn((_a, b)) { b },
     ),
     1,
