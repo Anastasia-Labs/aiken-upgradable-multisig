@@ -198,6 +198,7 @@ pub fn validate_remove(
     output_reference: input_output_ref,
     output: Output {
       address: Address { payment_credential: Script(own_policy), .. },
+      value: in_value,
       ..
     },
   }) = inputs |> list.at(input_index)
@@ -205,13 +206,18 @@ pub fn validate_remove(
   let reference_correct = own_ref == input_output_ref
   let enough_signers = signed_within_threshold(datum, extra_signatories)
 
+  let in_multisig_token = assets.tokens(in_value, own_policy)
+  expect [Pair(_, in_amount)] = dict.to_pairs(in_multisig_token)
+  let in_token_correct = in_amount == 1
+
   let burn_multisig_token = assets.tokens(mint, own_policy)
-  expect [Pair(_, amount)] = dict.to_pairs(burn_multisig_token)
-  let token_destroyed = amount == -1
+  expect [Pair(_, mint_amount)] = dict.to_pairs(burn_multisig_token)
+  let token_destroyed = mint_amount == -1
 
   and {
     reference_correct?,
     enough_signers?,
+    in_token_correct?,
     token_destroyed?,
   }
 }
