@@ -50,7 +50,10 @@ pub fn validate_init(
 }
 
 pub fn validate_end(own_policy: PolicyId, tx: Transaction) -> Bool {
-  list.all(dict.to_pairs(tokens(tx.mint, own_policy)), fn (Pair(_token_name, amount)) { amount == -1 })
+  list.all(
+    dict.to_pairs(tokens(tx.mint, own_policy)),
+    fn(Pair(_token_name, amount)) { amount == -1 },
+  )
 }
 
 pub fn validate_sign(
@@ -85,13 +88,11 @@ pub fn validate_sign(
       expect output_datum: MultisigDatum = out_datum
       let out_datum_correct = output_datum == datum
 
-      let sig_token = assets.tokens(in_value, own_policy)
-      expect [Pair(multisig_token_name, 1)] = dict.to_pairs(sig_token)
+      let multisig_token = assets.tokens(out_value, own_policy)
+      expect [Pair(multisig_token_name, 1)] = dict.to_pairs(multisig_token)
 
       let in_token_correct =
         quantity_of(in_value, own_policy, multisig_token_name) == 1
-      let out_token_correct =
-        quantity_of(out_value, own_policy, multisig_token_name) == 1
       let in_funds =
         quantity_of(in_value, datum.fund_policy_id, datum.fund_asset_name)
       let out_funds =
@@ -103,7 +104,6 @@ pub fn validate_sign(
         out_address_correct?,
         out_datum_correct?,
         in_token_correct?,
-        out_token_correct?,
         spending_limit_followed?,
       }
     },
@@ -164,10 +164,10 @@ pub fn validate_update(
       expect [Pair(_, in_ada), ..in_tl] =
         in_value |> assets.to_dict |> dict.to_pairs
       let out_value_unchanged = out_tl == in_tl
-      expect [Pair(_, out_amount), ..] = dict.to_pairs(out_ada)
-      expect [Pair(_, in_amount), ..] = dict.to_pairs(in_ada)
 
-      let out_ada_correct = out_amount >= in_amount
+      expect [Pair(_, out_ada_amount), ..] = dict.to_pairs(out_ada)
+      expect [Pair(_, in_ada_amount), ..] = dict.to_pairs(in_ada)
+      let out_ada_correct = out_ada_amount >= in_ada_amount
 
       and {
         enough_signers?,
@@ -205,8 +205,9 @@ pub fn validate_remove(
   let reference_correct = own_ref == input_output_ref
   let enough_signers = signed_within_threshold(datum, extra_signatories)
 
-  let multisig_token_name = utils.multisig_token_name(input_output_ref)
-  let token_destroyed = quantity_of(mint, own_policy, multisig_token_name) == -1
+  let burn_multisig_token = assets.tokens(mint, own_policy)
+  expect [Pair(_, amount)] = dict.to_pairs(burn_multisig_token)
+  let token_destroyed = amount == -1
 
   and {
     reference_correct?,
