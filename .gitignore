@@ -3,3 +3,4 @@ artifacts/
 # Aiken's project working directory
 build/
 .env/
+.vscode/
