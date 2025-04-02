@@ -189,11 +189,10 @@ The Multi-sig Contract is the primary contract responsible for managing the list
 ```typ
   pub type MintMultisig {
     InitMultiSig {
-      output_reference: OutputReference,
       input_index: Int,
       output_index: Int,
     }
-    EndMultiSig { datum: MultisigDatum, input_index: Int }
+    EndMultiSig
   }
 
 ```
@@ -242,7 +241,8 @@ The multisig datum structure holds the current state of the multisig arrangement
   pub type MultisigDatum {
     signers: List<PubKeyHash>,
     threshold: Int,
-    funds: AssetClass,
+    fund_policy_id: PolicyId,
+    fund_asset_name: AssetName,
     spending_limit: Int,
   }
 
@@ -252,7 +252,9 @@ The multisig datum structure holds the current state of the multisig arrangement
 
 - *`threshold`:* Minimum number of required signatures.
 
-- *`funds`:* AssetClass of the funds to be withdrawn.
+- *`fund_policy_id`:* PolicyId of the funds to be withdrawn.
+
+- *`fund_asset_name`:* AssetName of the funds to be withdrawn.
 
 - *`spending_limit`:* Max Amount of funds to be withdrawn per transaction.
 
@@ -267,7 +269,8 @@ The contract supports two types of operations, represented by the redeemer:
   pub type MultisigRedeemer {
     Sign { input_index: Int, output_index: Int }
     Update { input_index: Int, output_index: Int }
-  }
+    Remove { input_index: Int }
+ }
 
 ```
 \
@@ -279,9 +282,9 @@ The contract supports two types of operations, represented by the redeemer:
 \
 + *Sign* 
   
-  The redeemer allows a majority of the authorized signers to collectively approve and execute transactions using the funds controlled by the multi-signature contract
+  The redeemer allows all of the authorized signers to collectively approve and execute transactions using the funds controlled by the multi-signature contract
   
-  - Verifies that the required number of authorized signers have signed the transaction (based on the threshold).
+  - Verifies that all the authorized signers have signed the transaction.
 
   - Ensures the transfer amount does not exceed the `spending_limit`
 
@@ -519,7 +522,7 @@ This transaction terminates the multi-sig contract by burning the Multisig NFT a
 \
 + Distribution UTxOs
 
-  - Funds are distributed to the appropriate addresses as per the termination plan.
+  - Funds are distributed to the appropriate addresses as per the termination conditions set by the signers.
 
   - Value:
   
