@@ -17,9 +17,9 @@
 
    The test suite comprises **eleven key test cases**, split between:
 
-      - **Happy Path Tests (6 cases)**: Verify expected, valid operations.
+   - **Happy Path Tests (6 cases)**: Verify expected, valid operations.
 
-      - **Negative Tests (5 cases)**: Confirm the contract correctly rejects invalid operations.
+   - **Negative Tests (5 cases)**: Confirm the contract correctly rejects invalid operations.
 
    Each test case executes **100 iterations** (fuzzy tests) with randomized inputs, and many tests can be reproduced deterministically via a seed (e.g., --seed=2209211554).
 

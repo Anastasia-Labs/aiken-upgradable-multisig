@@ -120,7 +120,7 @@ To demonstrate and validate these following functionalities,
 
 We have prepared comprehensive test cases. For detailed evidence and to view the
 test cases associated with these criteria, please refer to the
-[Test Documentation](/lib/upgradable-multisig/tests)
+[Test Documentation](/TEST-README)
 
 To run all tests, simply do:
 
