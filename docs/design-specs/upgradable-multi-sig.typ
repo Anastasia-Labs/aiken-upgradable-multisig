@@ -282,9 +282,9 @@ The contract supports two types of operations, represented by the redeemer:
 \
 + *Sign* 
   
-  The redeemer allows all of the authorized signers to collectively approve and execute transactions using the funds controlled by the multi-signature contract
+  The redeemer allows the threshold or greater number of the authorized signers to collectively approve and execute transactions using the funds controlled by the multi-signature contract
   
-  - Verifies that all the authorized signers have signed the transaction.
+  - Verifies that the required number of authorized signers have signed the transaction.
 
   - Ensures the transfer amount does not exceed the `spending_limit`
 
