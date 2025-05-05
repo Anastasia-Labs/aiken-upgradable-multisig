@@ -36,9 +36,9 @@ The multisig_validator is the core component of the contract, responsible for:
 
 ### Key Functions
 
-1. **`validate_init_multisig:`** Validates the initialization of the multisig contract, ensuring that the Multisig NFT is correctly minted and that the initial configuration is properly set.
+1. **`validate_init:`** Validates the initialization of the multisig contract, ensuring that the Multisig NFT is correctly minted and that the initial configuration is properly set.
 
-2. **`validate_end_multisig:`** Validates the termination of the multisig contract, confirming that the required signers have approved the termination and that the Multisig NFT is correctly burned.
+2. **`validate_end:`** Validates the termination of the multisig contract, confirming that the required signers have approved the termination and that the Multisig NFT is correctly burned.
 
 3. **`validate_sign:`** Validates transactions that involve spending funds from the multisig contract. It ensures:
 
@@ -58,11 +58,9 @@ The multisig_validator is the core component of the contract, responsible for:
 
 ### Helper Functions
 
-1. **`has_enough_signers:`** Determines if the transaction has been signed by enough authorized signers to meet the threshold.
+1. **`signed_within_threshold:`** Determines if the transaction has been signed by enough authorized signers to meet the threshold.
 
-2. **`get_input_by_token:`** Retrieves the input UTxO that contains a specific token, such as the Multisig NFT.
-
-3. **`validate_nft_output:`** Validates that the Multisig NFT is correctly handled in the transaction outputs, ensuring it remains at the script address during contract operations.
+2. **`multisig_token_name:`** Creates a unique multisig NFT using the transaction Output Reference.
 
 ## Getting Started
 
@@ -93,21 +91,18 @@ aiken build
 
 ## Testing
 
-Comprehensive test cases are provided to ensure the contract behaves as expected under various scenarios:
+Comprehensive test cases are provided to ensure the contract behaves as expected under various scenarios with the focus on:
 
-1. **`success_init_multisig:`** Tests the successful initialization of the multisig contract and minting of the Multisig NFT.
+1. **`succeed_init_multisig_fuzzy:`** Tests the successful initialization of the multisig contract and minting of the Multisig NFT.
 
-2. **`success_sign`**: Tests a successful transaction signing scenario where the
-   number of signatures meets the threshold.
-3. **`reject_insufficient_signatures`**: Tests the rejection of a transaction
-   when insufficient signatures are provided.
-4. **`success_adjust_threshold`**: Tests the successful adjustment of the
-   signature threshold.
-5. **`success_add_signer`**: Tests the successful addition of a new signer to
-   the contract.
-6. **`success_remove_signer`**: Tests the successful removal of a signer from
-   the contract.
-7. **`success_end_multisig:`** Tests the successful termination of the multisig contract and burning of the Multisig NFT.
+2. **`succeed_sign_unlock_multisig_fuzzy`**: Tests a successful transaction signing scenario where the number of signatures meets the threshold and funds are unlocked.
+3. **`succeed_sign_lock_multisig_fuzzy`**: Tests a successful transaction signing scenario where the number of signatures meets the threshold and funds are locked.
+4. **`succeed_update_multisig_fuzzy`**: Tests the:
+   - successful adjustment of the signature threshold.
+
+   - successful addition of a new signer to the contract.
+   - successful removal of a signer from the contract.
+5. **`success_end_multisig:`** Tests the successful termination of the multisig contract and burning of the Multisig NFT.
 
 
 ### Running Tests
@@ -120,7 +115,7 @@ To demonstrate and validate these following functionalities,
 
 We have prepared comprehensive test cases. For detailed evidence and to view the
 test cases associated with these criteria, please refer to the
-[Test Documentation](/lib/upgradable-multisig/tests)
+[Test Documentation](/TEST-README)
 
 To run all tests, simply do:
 
@@ -128,11 +123,11 @@ To run all tests, simply do:
 aiken check
 ```
 
-![aiken-upgradable-multisig.gif](/assets/images/aiken-upgradable-multisig.gif)
+![aiken-upgradable-multisig.gif](/assets/images/aiken_check.gif)
 
 Test results:
 
-![test_report.png](/assets/images/test_report.png)
+![test_report.png](/docs/images/all-multisig.png)
 
 Each test case is designed to validate specific aspects of the multi-signature
 contract,To run only specific tests, do:

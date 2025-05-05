@@ -2,263 +2,184 @@
 
 ## Overview
 
-This document presents comprehensive evidence of the successful implementation
-and testing of the Upgradable Multi-signature Smart Contract. It addresses three
-key aspects:
+   This document presents comprehensive evidence of the successful implementation
+   and testing of the Upgradable Multi-signature Smart Contract. It addresses three
+   key aspects:
 
-1. Secure Spending of Assets
-2. Seamless Adjustment of Signer Thresholds
-3. Dynamic Addition or Removal of Signers
+   1. **Secure Spending of Assets**
 
-Each section provides detailed insights into the functionality, security, and
-usability of the smart contract.
+   2. **Seamless Adjustment of Signer Thresholds**
+   3. **Dynamic Addition or Removal of Signers**
 
-## Test Suite Details
+   The contract undergoes rigorous property-based testing using Aiken’s fuzz framework, where over 1,100 randomized test cases ensure robustness and resilience under varied scenarios.
 
-The test suite for the Upgradable Multisignature Smart Contract consists of five
-critical test cases, each designed to verify specific aspects of the contract's
-functionality.
+## Test Suite Overview
+
+   The test suite comprises **eleven key test cases**, split between:
+
+   - **Happy Path Tests (6 cases)**: Verify expected, valid operations.
+
+   - **Negative Tests (5 cases)**: Confirm the contract correctly rejects invalid operations.
+
+   Each test case executes **100 iterations** (fuzzy tests) with randomized inputs, and many tests can be reproduced deterministically via a seed (e.g., --seed=2209211554).
 
 ### Test Execution Results
 
-```
- Testing ...
+   ![all-multisig.png](/docs/images/all-multisig.png)
 
-    ┍━ multisig ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    │ PASS [mem: 345065, cpu: 129190525] success_sign
-    │ PASS [mem: 168799, cpu:  62995904] reject_insufficient_signatures
-    │ · with traces
-    │ | signed_within_threshold ? False
-    │ PASS [mem: 337650, cpu: 122823098] success_adjust_threshold
-    │ PASS [mem: 375506, cpu: 136154507] success_add_signer
-    │ PASS [mem: 308745, cpu: 112706264] success_remove_signer
-    ┕━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 5 tests | 5 passed | 0 failed
+   Reproducing an individual test is straightforward:
 
-      Summary 5 checks, 0 errors, 0 warnings
-```
+   ```sh
+   upgradable-multisig$ aiken check -m fail_end_multisig_fuzzy
+      ...
+      ┕ with --seed=2209211554 → 1 tests | 1 passed | 0 failed
+   ```
 
-## 1. Secure Spending of Assets
+   **1. Secure Spending of Assets**
 
-Our rigorous testing suite demonstrates the contract's ability to manage secure
-asset spending effectively.
+   Our rigorous testing suite demonstrates the contract's ability to manage secure asset spending effectively, starting with the initiating / creation of a multisig
 
 ### Detailed Test Analysis
 
-#### A. Test Case: Successful Transaction (success_sign)
+#### A. Test Case: validate_init (succeed_init_multisig_fuzzy)
 
-```
-   Testing ...
+   ![init-multisig.png](/docs/images/init-multisig.png)
 
-    ┍━ multisig ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    │ PASS [mem: 589296, cpu: 274524061] success_sign
-    │ · with traces
-    │ | Test: Successful Transaction Signing
-    │ | Total number of signatories in the multisig
-    │ | 4
-    │ | Required threshold of signatures
-    │ | 3
-    │ | Number of signatories actually signing this transaction
-    │ | 3
-    │ | Total amount in the contract (in lovelace)
-    │ | 100000000000
-    │ | Maximum spending limit per transaction (in lovelace)
-    │ | 1000000000
-    │ | Amount being withdrawn in this transaction (in lovelace)
-    │ | 1000000000
-    │ | Remaining amount in the contract after withdrawal (in lovelace)
-    │ | 99000000000
-    │ | Result: Transaction successfully signed and executed!
-    ┕━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1 tests | 1 passed | 0 failed
-```
+   - Objective: Validate that the multisig contract initializes correctly.
+   - Key Points:
 
-This test validates the contract's ability to execute transactions when properly
-authorized. It demonstrates a successful transaction where:
+      - Correct datum per design specification.
 
-- 3 out of 4 signatories approved the transaction (meeting the threshold)
-- The withdrawal amount (1,000,000,000) was within the spending limit
-- The contract balance was correctly updated after the transaction
+      - All required signers must authorize the initialization.
 
-The test confirms that the contract correctly processes transactions when the
-required number of signatories (3 out of 4) approve and the withdrawal amount is
-within the specified limit.
+   - Iterations: 100 tests.
 
-#### B. Test Case: Rejected Insufficient Signatures (reject_insufficient_signatures)
 
-```
-     Testing ...
+#### B.  Transaction Authorization (Signing): validate_sign
 
-    ┍━ multisig ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    │ PASS [mem: 410732, cpu: 207334934] reject_insufficient_signatures
-    │ · with traces
-    │ | Test: Rejecting Transaction with Insufficient Signatures
-    │ | Total number of signatories in the multisig
-    │ | 4
-    │ | Required threshold of signatures
-    │ | 3
-    │ | Number of signatories actually signing this transaction
-    │ | 2
-    │ | Total amount in the contract (in lovelace)
-    │ | 100000000000
-    │ | Maximum spending limit per transaction (in lovelace)
-    │ | 1000000000
-    │ | Attempted withdrawal amount (in lovelace)
-    │ | 1000000000
-    │ | Contract amount if withdrawal were allowed (in lovelace)
-    │ | 99000000000
-    │ | Result: Transaction rejected due to insufficient signatures!
-    │ | signed_within_threshold ? False
-    ┕━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1 tests | 1 passed | 0 failed
-```
+   This test validates the contract's ability to execute transactions when properly
+   authorized. It demonstrates a successful transaction where:
 
-This test demonstrates the contract's robust security measures by successfully
-rejecting a transaction with insufficient signatures (2 provided, 3 required),
-thereby protecting assets from unauthorized spending.
+   - Signatories approved the transaction (meeting the threshold)
 
-## 2. Seamless Adjustment of Signer Thresholds
+   - The withdrawal amount was within the spending limit
+   - The contract balance was correctly updated after the transaction
 
-The contract incorporates a user-friendly process for adjusting signer
-thresholds, ensuring adaptability to changing security needs.
+   There are three main tests each with 100 different checks within this endpoint:
 
-### Detailed Test Analysis
+   1. **Locking Funds** 
 
-#### Test Case: Successful Threshold Adjustment (success_adjust_threshold)
+      **Test Case:** ```succeed_sign_lock_multisig_fuzzy```
 
-```
-     Testing ...
+      ![succeed_sign_lock_multisig_fuzzy.png](/docs/images/succeed_sign_lock_multisig_fuzzy.png)
 
-    ┍━ multisig ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    │ PASS [mem: 640878, cpu: 267881842] success_adjust_threshold
-    │ · with traces
-    │ | Test: Successfully Adjusting Signature Threshold
-    │ | Original signature threshold
-    │ | 2
-    │ | Total number of signatories in the multisig
-    │ | 4
-    │ | Current contract value (in lovelace)
-    │ | {_ h'': {_ h'': 100000000000 } }
-    │ | User clicks on action Redeemer: Update
-    │ | 122([])
-    │ | New threshold value
-    │ | 3
-    │ | Number of signatories approving this change
-    │ | 4
-    │ | Contract value after threshold adjustment (should be unchanged)
-    │ | {_ h'': {_ h'': 100000000000 } }
-    │ | Result: Signature threshold successfully updated!
-    ┕━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1 tests | 1 passed | 0 failed
+      - Objective: Confirm that funds remain locked until the required number of signatories approve.
+      
+      - Iterations: 100 tests.
 
-      Summary 1 check, 0 errors, 0 warnings
-```
+   1. **Unlocking Funds**
+   
+      **Test Case:** ```succeed_sign_unlock_multisig_fuzzy```
 
-This test verifies the contract's ability to adjust the signer threshold from 2
-to 3 without errors, demonstrating the flexibility of the contract's security
-parameters.
+      ![succeed_sign_unlock_multisig_fuzzy.png](/docs/images/succeed_sign_unlock_multisig_fuzzy.png)
 
-### Threshold Adjustment Workflow
+      - Objective: Verify that funds can be unlocked when the threshold of signatures is met and withdrawal limits are respected.
+      
+      - Iterations: 100 tests.
 
-1. **Initiate Threshold Change:** Users can propose new threshold values through
-   an intuitive interface.
+   1. **Failure on Insufficient Authorization** 
+   
+      **Test Case:** fail_sign_multisig_fuzzy
+
+      ![fail_sign_multisig_fuzzy.png](/docs/images/fail_sign_multisig_fuzzy.png)
+
+      - Objective: Ensure transactions are rejected when signer thresholds aren’t met, protecting against unauthorized spending.
+
+      - Scenarios Covered:
+         - Insufficient signer approvals.
+
+         - Malformed or invalid signer inputs.
+         - Withdrawal amounts exceeding limits.
+      - Iterations: 100 tests.
+
+### Acceptance Criteria
+
+   **Objective**: Ensure only authorized members execute asset transactions.  
+
+   | Test Case | Description | Relevance |  
+   |-----------|-------------|-----------|  
+   | `succeed_sign_unlock_multisig_fuzzy` | Unlocks and executes transactions when authorized signers meet the threshold. | Validates secure spending under valid conditions. |  
+   | `succeed_sign_lock_multisig_fuzzy` | Locks funds until the required threshold of signatures is achieved. | Ensures security rules are enforced. |  
+   | `fail_sign_multisig_fuzzy` | Rejects transactions with invalid/insufficient signatures (e.g., unauthorized signers, incomplete quorum). | Prevents unauthorized access and potential misuse. |  
+
+   **Summary**:  
+   - **100% pass rate** across 100 fuzzy iterations for both valid and invalid scenarios.  
+
+   - Fuzz testing simulates adversarial inputs (e.g., malformed signatures, mismatched keys) to stress-test edge cases.  
+
+---
+
+## 2. Contract Updates and Signer Adjustments (validate_update)
+
+   The two tests below demonstrate a user-friendly process for verifying the:  
+
+   - Adjusting signer thresholds, ensuring adaptability to changing security needs.
+   
+   - Dynamic addition and removal of signers allowing for flexible management of the signer pool, adapting to organizational changes while maintaining security.
+   - Secure spending limit adjustment
+
+   1. **Successful Update**
+
+      **Test Case: ```succeed_update_multisig_fuzzy```**
+
+      ![succeed_update_multisig_fuzzy.png](/docs/images/succeed_update_multisig_fuzzy.png)
+
+      - Objective: Confirm that authorized signers can adjust thresholds, add, or remove signers.
+
+      - Key Points:
+         - Adjustments are only executed when a valid proposal is signed by all required signers.
+
+         - Uses randomized threshold values to validate robustness.
+      - Iterations: 100 tests.
+
+   1. **Failure on Unauthorized Update**
+
+      ![fail_update_multisig_fuzzy.png](/docs/images/fail_update_multisig_fuzzy.png)
+
+   - Objective: Ensure that updates are rejected if the signer does not have proper authority.
+   
+   - Iterations: 100 tests.
+
+
+### Update Workflow
+
+1. **Initiate Change:** Through an intuitive interface, Signers can: 
+
+   - Propose new threshold values or new signers.
+
+   - Propose removal of an existing signer.
+
 2. **Review Proposed Changes:** The system clearly presents current and proposed
-   thresholds for easy comparison.
-3. **Collect Required Signatures:**Authorized signers can efficiently review and
+   changes for easy comparison.
+3. **Collect Required Signatures:** Authorized signers can efficiently review and
    sign the proposal.
-4. **Confirmation of Update:** Upon collecting required signatures, the system
-   promptly updates the threshold.
+4. **Confirmation of Update:** Upon collecting required signatures, the system securely and promptly updates the change.
+   
 
-This streamlined process ensures that threshold adjustments are both secure and
-user-friendly.
+### Acceptance Criteria
 
-## 3. Dynamic Addition or Removal of Signers
+####  1. Seamless Adjustment of Signer Thresholds 
 
-The contract allows for flexible management of the signer pool, adapting to
-organizational changes while maintaining security.
+   **Objective**: Enable authorized members to update thresholds securely.  
 
-### Detailed Test Analysis
+   | Test Case | Description | Relevance |  
+   |-----------|-------------|-----------|  
+   | `succeed_update_multisig_fuzzy` | Successfully updates thresholds and signer lists with valid proposals. | Ensures flexibility and correct parameter updates.|  
+   | `fail_update_multisig_fuzzy` | Blocks threshold updates with invalid permissions (e.g., non-signers attempting changes). | Verifies security invariants for strict administrative controls. |  
 
-#### Test Case: Successful Signer Addition (success_add_signer)
-
-```
-   Testing ...
-
-    ┍━ multisig ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    │ PASS [mem: 596818, cpu: 258625029] success_add_signer
-    │ · with traces
-    │ | Test: Successfully Adding a New Signer to the Multisig Contract
-    │ | Number of signatories before addition
-    │ | 4
-    │ | Current contract value (in lovelace)
-    │ | 100000000000
-    │ | Current signature threshold
-    │ | 3
-    │ | Number of signatories approving this change
-    │ | 4
-    │ | Redeemer used for this operation
-    │ | 122([])
-    │ | Number of signatories after addition
-    │ | 5
-    │ | Signature threshold after addition (unchanged)
-    │ | 3
-    │ | Contract value after adding signer (should be unchanged)
-    │ | 100000000000
-    │ | Result: New signer successfully added to the multisig!
-    ┕━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1 tests | 1 passed | 0 failed
-```
-
-This test confirms the contract's ability to dynamically add a new signer,
-increasing the total number of signatories from 4 to 5.
-
-### Dynamic Signer Addition Process
-
-1. **Proposal Initiation**: An authorized user proposes a new signer, providing
-   necessary credentials.
-2. **Collective Review**: Existing signers examine the proposal details.
-3. **Approval Gathering**: The system collects required signatures for the
-   addition.
-4. **Execution and Verification**: Upon approval, the new signer is added, and
-   the updated list is displayed for confirmation.
-
-#### Test Case: Successful Signer Removal (success_remove_signer)
-
-```
-    Testing ...
-
-    ┍━ multisig ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    │ PASS [mem: 525925, cpu: 233410760] success_remove_signer
-    │ · with traces
-    │ | Test: Successfully Removing a Signer from the Multisig Contract
-    │ | Current contract value (in lovelace)
-    │ | 100000000000
-    │ | Number of signatories before removal
-    │ | 4
-    │ | Signature threshold before removal
-    │ | 3
-    │ | Number of signatories approving this change
-    │ | 4
-    │ | Redeemer used for this operation
-    │ | 122([])
-    │ | Number of signatories after removal
-    │ | 3
-    │ | Signature threshold after removal and adjustment (Can be changed)
-    │ | 2
-    │ | Contract value after removing signer (should be unchanged)
-    │ | 100000000000
-    │ | Result: Signer successfully removed and threshold adjusted
-    ┕━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1 tests | 1 passed | 0 failed
-```
-
-This test verifies the contract's capability to remove signers and automatically
-adjust the threshold, demonstrating its adaptability to changing organizational
-needs while maintaining security.
-
-### Dynamic Signer Removal Process
-
-1. **Removal Proposal**: An authorized user initiates the removal of a specific
-   signer.
-2. **Proposal Review**: Remaining signers assess the removal proposal.
-3. **Consensus Building**: The system gathers necessary approvals, excluding the
-   signer in question.
-4. **Execution and Confirmation**: Post-approval, the signer is removed, and the
-   system displays the updated list for verification.
+   **Key Observations**:  
+   - Tests use randomized threshold values (via `--seed` parameter) to validate robustness.  
+   - Threshold logic remains intact even under adversarial fuzzing (e.g., invalid quorum values).  
 
 ### Security Considerations
 
@@ -266,15 +187,57 @@ needs while maintaining security.
   vulnerabilities.
 - Threshold adjustments may be required before certain signer removals to
   maintain contract integrity.
+- All the signers are required to sign the contract while initiating the proposal in order to verify the correct signatures (pub-key-hash)
+- Single output restriction when updating to prevent double satisfaction attack.
+
+## Contract Termination (validate_end)
+
+### A. Successful Termination
+
+#### Test Case: ```succeed_end_multisig_fuzzy```
+
+   ![succeed_end_multisig_fuzzy.png](/docs/images/succeed_end_multisig_fuzzy.png)
+
+
+- Objective: Ensure that the contract can be terminated only by properly authorized signers.
+
+- Iterations: 100 tests.
+
+### B. Termination Failure
+
+#### Test Case: Fail Contract Termination (fail_end_multisig_fuzzy)
+
+   ![fail_end_multisig_fuzzy.png](/docs/images/fail_end_multisig_fuzzy.png)
+
+- Objective: Confirm that unauthorized termination attempts are rejected.
+
+- Iterations: 100 tests.
+
+---
+
+### Technical Highlights  
+
+1. **Property-Based Fuzz Testing:**:  
+   - Tests use **Aiken’s fuzz framework** to validate invariants across 100+ randomized inputs per case ensuring that the contract remains robust under both valid and adversarial conditions.
+
+2. **Reproducibility**:  
+   - Seed parameters (e.g., --seed=2333146345) allow for deterministic replay of tests, which is essential for debugging and audit trails.
+
+3. **Security Guarantees**:  
+   - All tests have consistently passed with no errors or warnings, validating the contract’s stability and security.
+
+   - All administrative actions (updates, removals) require cryptographic authorization.  
+
 
 ## Conclusion
 
 The Upgradable Multisignature Smart Contract demonstrates robust security,
-flexibility, and user-centric design. Through comprehensive testing and
-thoughtful process implementation, it effectively manages secure asset spending,
-allows for seamless threshold adjustments, and facilitates dynamic signer
-management.
+flexibility, and user-centric design. Through thoughtful process implementation and comprehensive testing under a broad spectrum of scenarios, The test results confirm that the contract reliably: 
+
+- **Manages secure spending:** Only authorized transactions are executed.
+
+- **Supports dynamic updates:** Signer thresholds and membership can be updated securely.
+- **Terminates safely:** The contract ends only when properly authorized.
 
 These features collectively ensure that the contract can adapt to evolving
-organizational needs while maintaining the highest standards of security and
-usability.
+organizational needs while maintaining the highest standards of security, flexibility and usability for deployment in evolving organisational environments.
